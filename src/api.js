@@ -61,3 +61,11 @@ export const getControlScoresByMapId = (mapId) =>
 // Step count
 export const postStepCount = (characterId, stepCount, requestId) =>
     request('POST', '/api/StepCount', { characterId, stepCount, requestId });
+
+// Realtime
+export async function createMapControlSocket(mapId) {
+    const token = await getToken();
+    const wsBase = BASE_URL.replace(/^http/, 'ws');
+    const url = `${wsBase}/ws/map-control?mapId=${mapId}${token ? `&access_token=${token}` : ''}`;
+    return new WebSocket(url);
+}
