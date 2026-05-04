@@ -154,7 +154,7 @@ export default function StepCountScreen({ route, navigation }) {
 
                 <Text style={styles.title}>Submit Steps</Text>
                 <Text style={styles.subtitle} numberOfLines={1} ellipsizeMode="middle">
-                    Character: {character.CharacterId}
+                    Character: {character.CharacterName || character.CharacterId}
                 </Text>
 
                 {isPedometerAvailable === null && (

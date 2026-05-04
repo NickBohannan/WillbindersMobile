@@ -44,8 +44,8 @@ export const getCharactersByUserId = (userId) =>
 export const getCharactersInMap = (mapId) =>
     request('GET', `/api/RealmData/GetAllCharactersInMapAsync/${mapId}`);
 
-export const createCharacter = (teamId, currentZone, currentMap) =>
-    request('POST', '/api/RealmData/CreateCharacterAsync', { teamId, currentZone, currentMap });
+export const createCharacter = (characterName, teamId, currentZone, currentMap) =>
+    request('POST', '/api/RealmData/CreateCharacterAsync', { characterName, teamId, currentZone, currentMap });
 
 export const deleteCharacter = (characterId) =>
     request('DELETE', `/api/RealmData/DeleteCharacterAsync/${characterId}`);

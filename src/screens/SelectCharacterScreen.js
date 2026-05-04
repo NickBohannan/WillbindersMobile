@@ -59,12 +59,17 @@ export default function SelectCharacterScreen({ navigation }) {
                 contentContainerStyle={styles.list}
                 renderItem={({ item }) => (
                     <View style={styles.card}>
+                        <Text style={styles.cardName} numberOfLines={1} ellipsizeMode="tail">
+                            {item.CharacterName || 'Unnamed Character'}
+                        </Text>
                         <Text style={styles.cardId} numberOfLines={1} ellipsizeMode="middle">
                             ID: {item.CharacterId}
                         </Text>
                         <View style={styles.row}>
                             <Text style={styles.label}>Team</Text>
-                            <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{item.TeamId}</Text>
+                            <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">
+                                {item.TeamName || item.TeamId}
+                            </Text>
                         </View>
                         <View style={styles.row}>
                             <Text style={styles.label}>Power</Text>
@@ -108,6 +113,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#0f3460',
     },
+    cardName: { color: '#e0e0e0', fontSize: 16, fontWeight: '700', marginBottom: 6 },
     cardId: { color: '#a0a0c0', fontSize: 12, marginBottom: 8 },
     row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
     label: { color: '#a0a0c0', fontSize: 14 },
