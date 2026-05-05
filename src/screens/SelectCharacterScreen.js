@@ -8,28 +8,38 @@ import {
     ActivityIndicator,
     SafeAreaView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
 
-export default function SelectCharacterScreen({ navigation }) {
+export default function SelectCharacterScreen({ navigation, route }) {
     const { userId } = useAuth();
     const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        async function load() {
-            try {
-                const data = await api.getCharactersByUserId(userId);
-                setCharacters(data?.Characters ?? []);
-            } catch (e) {
-                setError(e.message || 'Failed to load characters.');
-            } finally {
-                setLoading(false);
-            }
+    async function loadCharacters() {
+        try {
+            const data = await api.getCharactersByUserId(userId);
+            setCharacters(data?.Characters ?? []);
+            setError(null);
+        } catch (e) {
+            setError(e.message || 'Failed to load characters.');
+        } finally {
+            setLoading(false);
         }
-        load();
+    }
+
+    useEffect(() => {
+        setLoading(true);
+        loadCharacters();
     }, [userId]);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            loadCharacters();
+        }, [userId, route?.params?.refreshKey])
+    );
 
     function handleEnterMap(character) {
         navigation.navigate('CharacterMap', { character });

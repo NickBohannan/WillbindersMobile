@@ -11,6 +11,9 @@ export default function HomeScreen({ navigation }) {
             <Pressable style={styles.button} onPress={() => navigation.navigate('SelectCharacter')}>
                 <Text style={styles.buttonText}>Select Character</Text>
             </Pressable>
+            <Pressable style={styles.button} onPress={() => navigation.navigate('CreateCharacter')}>
+                <Text style={styles.buttonText}>Create Character</Text>
+            </Pressable>
             <Pressable style={[styles.button, styles.signOutButton]} onPress={signOut}>
                 <Text style={styles.buttonText}>Sign Out</Text>
             </Pressable>
