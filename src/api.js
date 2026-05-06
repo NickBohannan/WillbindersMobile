@@ -47,11 +47,17 @@ export const getCharactersInMap = (mapId) =>
 export const getAllTeams = () =>
     request('GET', '/api/RealmData/GetAllTeamsAsync');
 
+export const getMyLedTeams = () =>
+    request('GET', '/api/RealmData/GetMyLedTeamsAsync');
+
 export const getAllMaps = () =>
     request('GET', '/api/RealmData/GetAllMapsAsync');
 
 export const getZonesByMap = (mapId) =>
     request('GET', `/api/RealmData/GetZonesByMapAsync/${mapId}`);
+
+export const createTeam = (name) =>
+    request('POST', '/api/RealmData/CreateTeamAsync', { name });
 
 export const createCharacter = (characterName, teamId, currentZone, currentMap) =>
     request('POST', '/api/RealmData/CreateCharacterAsync', { characterName, teamId, currentZone, currentMap });
