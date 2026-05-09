@@ -20,6 +20,12 @@ export default function HomeScreen({ navigation }) {
             <Pressable style={styles.button} onPress={() => navigation.navigate('MyTeams')}>
                 <Text style={styles.buttonText}>My Teams</Text>
             </Pressable>
+            <Pressable style={styles.button} onPress={() => navigation.navigate('TeamInvites')}>
+                <Text style={styles.buttonText}>Team Invites</Text>
+            </Pressable>
+            <Pressable style={styles.button} onPress={() => navigation.navigate('TeamRequests')}>
+                <Text style={styles.buttonText}>Join Requests</Text>
+            </Pressable>
             <Pressable style={[styles.button, styles.signOutButton]} onPress={signOut}>
                 <Text style={styles.buttonText}>Sign Out</Text>
             </Pressable>

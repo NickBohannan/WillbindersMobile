@@ -59,6 +59,29 @@ export const getZonesByMap = (mapId) =>
 export const createTeam = (name) =>
     request('POST', '/api/RealmData/CreateTeamAsync', { name });
 
+// Team invitations and join requests
+export const inviteAccountToTeam = (teamId, accountId) =>
+    request('POST', '/api/RealmData/InviteAccountToTeam', { teamId, accountId });
+
+export const requestToJoinTeam = (teamLeaderId) =>
+    request('POST', '/api/RealmData/RequestToJoinTeam', { teamLeaderId });
+
+export const respondToInvite = (inviteId, response) =>
+    request('PUT', '/api/RealmData/RespondToInvite', { inviteId, response });
+
+export const respondToJoinRequest = (requestId, teamId, response) =>
+    request('PUT', '/api/RealmData/RespondToJoinRequest', { requestId, teamId, response });
+
+export const getPendingInvites = () =>
+    request('GET', '/api/RealmData/GetPendingInvites');
+
+export const getPendingJoinRequests = () =>
+    request('GET', '/api/RealmData/GetPendingJoinRequests');
+
+export const cancelInvite = (inviteId) =>
+    request('POST', `/api/RealmData/CancelInvite/${inviteId}`);
+
+// Characters
 export const createCharacter = (characterName, teamId, currentZone, currentMap) =>
     request('POST', '/api/RealmData/CreateCharacterAsync', { characterName, teamId, currentZone, currentMap });
 

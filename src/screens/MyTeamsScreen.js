@@ -68,9 +68,17 @@ export default function MyTeamsScreen({ navigation }) {
                     </View>
                 )}
                 ListFooterComponent={
-                    <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-                        <Text style={styles.backButtonText}>Back</Text>
-                    </Pressable>
+                    <View>
+                        <Pressable style={styles.actionButton} onPress={() => navigation.navigate('TeamRequests')}>
+                            <Text style={styles.backButtonText}>Open Join Requests</Text>
+                        </Pressable>
+                        <Pressable style={styles.actionButton} onPress={() => navigation.navigate('TeamInvites')}>
+                            <Text style={styles.backButtonText}>Open Team Invites</Text>
+                        </Pressable>
+                        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+                            <Text style={styles.backButtonText}>Back</Text>
+                        </Pressable>
+                    </View>
                 }
             />
         </SafeAreaView>
@@ -131,6 +139,13 @@ const styles = StyleSheet.create({
     },
     backButton: {
         backgroundColor: '#0f3460',
+        borderRadius: 8,
+        paddingVertical: 12,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    actionButton: {
+        backgroundColor: '#e94560',
         borderRadius: 8,
         paddingVertical: 12,
         alignItems: 'center',

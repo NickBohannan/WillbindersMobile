@@ -12,6 +12,8 @@ import SelectCharacterScreen from './src/screens/SelectCharacterScreen';
 import CreateCharacterScreen from './src/screens/CreateCharacterScreen';
 import CreateTeamScreen from './src/screens/CreateTeamScreen';
 import MyTeamsScreen from './src/screens/MyTeamsScreen';
+import TeamInvitesScreen from './src/screens/TeamInvitesScreen';
+import TeamRequestsScreen from './src/screens/TeamRequestsScreen';
 import CharacterMapScreen from './src/screens/CharacterMapScreen';
 import StepCountScreen from './src/screens/StepCountScreen';
 
@@ -37,6 +39,8 @@ function RootNavigator() {
                     <Stack.Screen name="CreateCharacter" component={CreateCharacterScreen} />
                     <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
                     <Stack.Screen name="MyTeams" component={MyTeamsScreen} />
+                    <Stack.Screen name="TeamInvites" component={TeamInvitesScreen} />
+                    <Stack.Screen name="TeamRequests" component={TeamRequestsScreen} />
                     <Stack.Screen name="CharacterMap" component={CharacterMapScreen} />
                     <Stack.Screen name="StepCount" component={StepCountScreen} />
                 </Stack.Group>
