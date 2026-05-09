@@ -16,7 +16,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSMotionUsageDescription": "Willbinders uses your step count to increase your character power."
-      }
+      },
+      "bundleIdentifier": "com.anonymous.willbindersmobile"
     },
     "android": {
       "adaptiveIcon": {
@@ -42,8 +43,8 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
             "minSdkVersion": 26
           }
         }
