@@ -1,17 +1,23 @@
 import { AppState, Platform, PermissionsAndroid } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AppleHealthKit from 'react-native-health';
-import { initialize, requestPermission, readRecords } from 'react-native-health-connect';
+import {
+    initialize,
+    requestPermission,
+    getGrantedPermissions,
+    readRecords,
+} from 'react-native-health-connect';
 import * as api from '../api';
 
-const STEP_SYNC_ANCHOR_KEY = 'stepSyncAnchorUtc';
-const HISTORY_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+const PREVIOUS_DAY_SYNC_KEY = 'stepSyncPreviousDayKey';
+const HEALTH_CONNECT_PERMISSION_RETRY_MS = 15 * 60 * 1000;
 
 let intervalHandle = null;
 let appStateHandle = null;
 let inFlight = false;
 let hasInitializedAppleHealthKit = false;
 let hasInitializedHealthConnect = false;
+let nextHealthConnectPermissionCheckAt = 0;
 
 function normalizeDate(value) {
     if (!value) {
@@ -30,26 +36,18 @@ function buildClientEventId(anchorIso, endIso, stepCount) {
     return `${anchorIso}|${endIso}|${stepCount}`;
 }
 
-function getHistoryAnchor(accountCreatedAtIso) {
-    const now = Date.now();
-    const oldestAllowedDate = new Date(now - HISTORY_LOOKBACK_MS);
+function getPreviousDayWindow(referenceDate) {
+    const localTodayMidnight = new Date(referenceDate);
+    localTodayMidnight.setHours(0, 0, 0, 0);
 
-    const accountCreatedAt = normalizeDate(accountCreatedAtIso);
-    if (!accountCreatedAt) {
-        return oldestAllowedDate;
-    }
+    const localYesterdayMidnight = new Date(localTodayMidnight);
+    localYesterdayMidnight.setDate(localYesterdayMidnight.getDate() - 1);
 
-    return accountCreatedAt > oldestAllowedDate ? accountCreatedAt : oldestAllowedDate;
-}
-
-function clampAnchorDate(anchorDate, accountCreatedAtIso) {
-    const fallbackAnchor = getHistoryAnchor(accountCreatedAtIso);
-
-    if (!anchorDate) {
-        return fallbackAnchor;
-    }
-
-    return anchorDate > fallbackAnchor ? anchorDate : fallbackAnchor;
+    return {
+        start: localYesterdayMidnight,
+        end: localTodayMidnight,
+        dayKey: localYesterdayMidnight.toISOString().slice(0, 10),
+    };
 }
 
 async function initializeAppleHealthKit() {
@@ -136,6 +134,11 @@ async function initializeHealthConnectClient() {
 async function requestHealthConnectPermissions() {
     console.log('[StepSync] Requesting Health Connect permissions for Steps...');
     try {
+        const nowMs = Date.now();
+        if (nowMs < nextHealthConnectPermissionCheckAt) {
+            throw new Error('Health Connect permission retry cooldown active.');
+        }
+
         // Request runtime permission on Android
         if (Platform.OS === 'android') {
             console.log('[StepSync] Android detected. Requesting ACTIVITY_RECOGNITION runtime permission...');
@@ -156,7 +159,34 @@ async function requestHealthConnectPermissions() {
             }
         }
 
-        console.log('[StepSync] Runtime permissions checked. Proceeding with Health Connect read.');
+        const granted = await getGrantedPermissions();
+        const hasStepRead = Array.isArray(granted)
+            && granted.some((permission) => permission?.recordType === 'Steps' && permission?.accessType === 'read');
+
+        if (hasStepRead) {
+            console.log('[StepSync] Health Connect step permission already granted.');
+            nextHealthConnectPermissionCheckAt = 0;
+            return;
+        }
+
+        const requested = await requestPermission([
+            {
+                accessType: 'read',
+                recordType: 'Steps',
+            },
+        ]);
+
+        const hasStepReadAfterRequest = Array.isArray(requested)
+            && requested.some((permission) => permission?.recordType === 'Steps' && permission?.accessType === 'read');
+
+        if (!hasStepReadAfterRequest) {
+            console.warn('[StepSync] Health Connect did not grant Steps permission.');
+            nextHealthConnectPermissionCheckAt = nowMs + HEALTH_CONNECT_PERMISSION_RETRY_MS;
+            throw new Error('Health Connect steps permission was not granted.');
+        }
+
+        console.log('[StepSync] Health Connect Steps permission granted.');
+        nextHealthConnectPermissionCheckAt = 0;
     } catch (error) {
         console.warn('[StepSync] Permission request error:', error);
         throw error;
@@ -200,7 +230,8 @@ async function readAndroidStepHistory(startDate, endDate) {
         const isSecurityError = errorMessage.includes('SecurityException') || errorMessage.includes('permission');
         
         if (isSecurityError) {
-            console.warn('[StepSync] Health Connect permission error. User must grant permissions in Health Connect app settings.');
+            console.warn('[StepSync] Health Connect permission error.');
+            nextHealthConnectPermissionCheckAt = Date.now() + HEALTH_CONNECT_PERMISSION_RETRY_MS;
             console.warn('[StepSync] Error:', error);
             throw new Error(
                 'Health Connect permissions not granted. ' +
@@ -243,38 +274,45 @@ async function syncOnce(accountCreatedAtIso) {
     inFlight = true;
     console.log('[StepSync] Starting sync. Platform:', Platform.OS, 'Account created:', accountCreatedAtIso);
     try {
-        const storedAnchorIso = await SecureStore.getItemAsync(STEP_SYNC_ANCHOR_KEY);
-        console.log('[StepSync] Stored anchor:', storedAnchorIso);
-        
-        const anchorDate = clampAnchorDate(normalizeDate(storedAnchorIso), accountCreatedAtIso);
-        console.log('[StepSync] Clamped anchor date:', anchorDate?.toISOString());
-
         const now = new Date();
         console.log('[StepSync] Current time:', now.toISOString());
-        
-        if (now <= anchorDate) {
-            console.log('[StepSync] No time has passed since last sync, skipping.');
+
+        const previousDayWindow = getPreviousDayWindow(now);
+        const windowStart = previousDayWindow.start;
+        const windowEnd = previousDayWindow.end;
+        const dayKey = previousDayWindow.dayKey;
+
+        const accountCreatedAt = normalizeDate(accountCreatedAtIso);
+        if (accountCreatedAt && accountCreatedAt >= windowEnd) {
+            console.log('[StepSync] Account created after previous-day window; skipping sync.');
             return;
         }
 
-        console.log('[StepSync] Reading step history from', anchorDate.toISOString(), 'to', now.toISOString());
-        const sampledSteps = await readHistoricalSteps(anchorDate, now);
+        const previouslySyncedDay = await SecureStore.getItemAsync(PREVIOUS_DAY_SYNC_KEY);
+        if (previouslySyncedDay === dayKey) {
+            console.log('[StepSync] Previous day already synced for', dayKey, '- skipping.');
+            return;
+        }
+
+        console.log('[StepSync] Reading previous-day step history from', windowStart.toISOString(), 'to', windowEnd.toISOString());
+        const sampledSteps = await readHistoricalSteps(windowStart, windowEnd);
         console.log('[StepSync] Steps read:', sampledSteps);
-        
-        const anchorIso = anchorDate.toISOString();
+
+        const windowStartIso = windowStart.toISOString();
+        const windowEndIso = windowEnd.toISOString();
         const nowIso = now.toISOString();
 
         if (sampledSteps <= 0) {
-            console.log('[StepSync] No steps found, updating anchor and skipping backend call.');
-            await SecureStore.setItemAsync(STEP_SYNC_ANCHOR_KEY, nowIso);
+            console.log('[StepSync] No previous-day steps found, marking day as synced and skipping backend call.');
+            await SecureStore.setItemAsync(PREVIOUS_DAY_SYNC_KEY, dayKey);
             return;
         }
 
         const events = [
             {
-                clientEventId: buildClientEventId(anchorIso, nowIso, sampledSteps),
-                windowStart: anchorIso,
-                windowEnd: nowIso,
+                clientEventId: buildClientEventId(windowStartIso, windowEndIso, sampledSteps),
+                windowStart: windowStartIso,
+                windowEnd: windowEndIso,
                 stepCount: sampledSteps,
             },
         ];
@@ -284,15 +322,19 @@ async function syncOnce(accountCreatedAtIso) {
         
         const response = await api.syncSteps(events, nowIso, Platform.OS, 'mobile');
         console.log('[StepSync] Backend response:', JSON.stringify(response, null, 2));
-        
-        const syncToIso = normalizeDate(response?.SyncTo)?.toISOString() ?? nowIso;
-        await SecureStore.setItemAsync(STEP_SYNC_ANCHOR_KEY, syncToIso);
-        console.log('[StepSync] Sync complete. Updated anchor to:', syncToIso);
+
+        await SecureStore.setItemAsync(PREVIOUS_DAY_SYNC_KEY, dayKey);
+        console.log('[StepSync] Sync complete. Marked previous day as synced:', dayKey);
     } catch (error) {
         const errorMsg = String(error?.message ?? error ?? '');
-        if (errorMsg.includes('Health Connect permissions not granted')) {
+        if (
+            errorMsg.includes('Health Connect permissions not granted')
+            || errorMsg.includes('steps permission was not granted')
+            || errorMsg.includes('permission retry cooldown active')
+        ) {
             console.warn('[StepSync] ⚠️ HEALTH CONNECT SETUP NEEDED');
-            console.warn('[StepSync] Please open the Health Connect app on your device');
+            console.warn('[StepSync] Auto-open is disabled to avoid UI lock-ups.');
+            console.warn('[StepSync] Open Health Connect manually from your app drawer/settings.');
             console.warn('[StepSync] Grant Willbinders permission to read Steps data');
             console.warn('[StepSync] Then return to Willbinders and try logging in again');
         } else {

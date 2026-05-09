@@ -27,7 +27,7 @@
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
         "android.permission.health.READ_STEPS",
-        "android.permission.READ_HEALTH_DATA"
+        "androidx.health.permission.READ_STEPS"
       ],
       "package": "com.anonymous.willbindersmobile"
     },
