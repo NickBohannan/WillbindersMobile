@@ -26,7 +26,8 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.health.READ_STEPS",
+        "android.permission.READ_HEALTH_DATA"
       ],
       "package": "com.anonymous.willbindersmobile"
     },
@@ -35,7 +36,25 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      "expo-health-connect",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 34,
+            "targetSdkVersion": 34,
+            "minSdkVersion": 26
+          }
+        }
+      ],
+      [
+        "react-native-health",
+        {
+          "healthSharePermission": "Willbinders reads your step history to sync character power.",
+          "healthUpdatePermission": "Willbinders can write health data when needed."
+        }
+      ]
     ]
   }
 }

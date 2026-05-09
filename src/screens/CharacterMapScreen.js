@@ -20,16 +20,18 @@ const TOAST_DURATION_MS = 5000;
 const MAP_BACKGROUND = require('../../assets/testmap.png');
 const MODULE_FONT_FAMILY = 'alagard';
 const ZONE_PIN_LAYOUTS = [
-    { left: '63%', top: '17%' },
-    { left: '47%', top: '64%' },
-    { left: '40%', top: '26%' },
-    { left: '6%', top: '37%' },
-    { left: '33%', top: '8%' },
-    { left: '10%', top: '82%' },
-    { left: '13%', top: '50%' },
-    { left: '8%', top: '66%' },
-    { left: '60%', top: '84%' },
-    { left: '63%', top: '40%' },
+    { left: '10%', top: '14%' },
+    { left: '38%', top: '10%' },
+    { left: '68%', top: '16%' },
+    { left: '16%', top: '36%' },
+    { left: '48%', top: '34%' },
+    { left: '74%', top: '44%' },
+    { left: '8%', top: '62%' },
+    { left: '36%', top: '66%' },
+    { left: '66%', top: '70%' },
+    { left: '22%', top: '82%' },
+    { left: '54%', top: '84%' },
+    { left: '78%', top: '86%' },
 ];
 
 export default function CharacterMapScreen({ route, navigation }) {
@@ -47,7 +49,6 @@ export default function CharacterMapScreen({ route, navigation }) {
     const [socketStatus, setSocketStatus] = useState('disconnected');
     const [toasts, setToasts] = useState([]);
     const [isCharacterOverlayVisible, setIsCharacterOverlayVisible] = useState(false);
-    const [isStepOverlayVisible, setIsStepOverlayVisible] = useState(false);
     const [selectedZoneSnapshot, setSelectedZoneSnapshot] = useState(null);
     const toastTimersRef = useRef({});
     const teamNameLookupRef = useRef({});
@@ -329,43 +330,12 @@ export default function CharacterMapScreen({ route, navigation }) {
                             style={styles.stepButton}
                             onPress={() => {
                                 setIsCharacterOverlayVisible(false);
-                                setIsStepOverlayVisible(true);
                             }}
                         >
-                            <Text style={styles.stepButtonText}>Open Step Overlay</Text>
+                            <Text style={styles.stepButtonText}>Step Sync Is Automatic</Text>
                         </Pressable>
                         <Pressable style={styles.modalCloseButton} onPress={() => setIsCharacterOverlayVisible(false)}>
                             <Text style={styles.modalCloseText}>Close</Text>
-                        </Pressable>
-                    </Pressable>
-                </Pressable>
-            </Modal>
-
-            <Modal
-                visible={isStepOverlayVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setIsStepOverlayVisible(false)}
-            >
-                <Pressable style={styles.modalBackdrop} onPress={() => setIsStepOverlayVisible(false)}>
-                    <Pressable style={styles.modalCard} onPress={() => { }}>
-                        <Text style={styles.modalTitle}>Step Submission</Text>
-                        <Text style={styles.modalSubtitle}>
-                            Ready to submit your latest step count for this character?
-                        </Text>
-
-                        <Pressable
-                            style={styles.stepSubmitActionButton}
-                            onPress={() => {
-                                setIsStepOverlayVisible(false);
-                                navigation.navigate('StepCount', { character });
-                            }}
-                        >
-                            <Text style={styles.stepSubmitActionText}>Submit Steps</Text>
-                        </Pressable>
-
-                        <Pressable style={styles.modalCloseButton} onPress={() => setIsStepOverlayVisible(false)}>
-                            <Text style={styles.modalCloseText}>Cancel</Text>
                         </Pressable>
                     </Pressable>
                 </Pressable>

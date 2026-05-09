@@ -96,9 +96,9 @@ export const getMap = (mapId) =>
 export const getControlScoresByMapId = (mapId) =>
     request('GET', `/api/RealmData/GetControlAccumulationScoresByMapAsync/${mapId}`);
 
-// Step count
-export const postStepCount = (characterId, stepCount, requestId) =>
-    request('POST', '/api/StepCount', { characterId, stepCount, requestId });
+// Step sync
+export const syncSteps = (events, clientNow, platform, appVersion) =>
+    request('POST', '/api/StepCount/Sync', { events, clientNow, platform, appVersion });
 
 // Realtime
 export async function createMapControlSocket(mapId) {
