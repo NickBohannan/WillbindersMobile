@@ -1,9 +1,30 @@
 import * as SecureStore from 'expo-secure-store';
 
 const BASE_URL = 'http://192.168.1.6:5075';
+let inMemoryToken = null;
+
+export function setAuthToken(token) {
+    inMemoryToken = typeof token === 'string' ? token.trim() : null;
+}
+
+export function clearAuthToken() {
+    inMemoryToken = null;
+}
 
 async function getToken() {
-    return await SecureStore.getItemAsync('token');
+    if (inMemoryToken) {
+        return inMemoryToken;
+    }
+
+    const persistedToken = await SecureStore.getItemAsync('token');
+    const normalized = typeof persistedToken === 'string' ? persistedToken.trim() : '';
+
+    if (normalized) {
+        inMemoryToken = normalized;
+        return normalized;
+    }
+
+    return null;
 }
 
 async function request(method, path, body = null) {
@@ -22,6 +43,10 @@ async function request(method, path, body = null) {
     const response = await fetch(`${BASE_URL}${path}`, options);
 
     if (!response.ok) {
+        if (response.status === 401) {
+            throw new Error('HTTP 401: Unauthorized (missing/expired token).');
+        }
+
         const text = await response.text();
         throw new Error(text || `HTTP ${response.status}`);
     }

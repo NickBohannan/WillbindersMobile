@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import { setAuthToken, clearAuthToken } from '../api';
 import { startAutoStepSync, stopAutoStepSync } from '../services/stepSyncService';
 
 const AuthContext = createContext(null);
@@ -15,7 +16,12 @@ export function AuthProvider({ children }) {
             const storedToken = await SecureStore.getItemAsync('token');
             const storedUserId = await SecureStore.getItemAsync('userId');
             const storedAccountCreatedAt = await SecureStore.getItemAsync('accountCreatedAt');
-            if (storedToken) setToken(storedToken);
+            if (storedToken) {
+                setAuthToken(storedToken);
+                setToken(storedToken);
+            } else {
+                clearAuthToken();
+            }
             if (storedUserId) setUserId(storedUserId);
             if (storedAccountCreatedAt) setAccountCreatedAt(storedAccountCreatedAt);
             setLoading(false);
@@ -36,9 +42,14 @@ export function AuthProvider({ children }) {
     }, [loading, token, accountCreatedAt]);
 
     async function signIn(responseData) {
-        const token = responseData.Token ?? responseData.token;
+        const token = String(responseData.Token ?? responseData.token ?? '').trim();
         const userId = String(responseData.UserId ?? responseData.userId ?? '');
         const createdAt = responseData.CreatedAt ?? responseData.createdAt ?? null;
+        if (!token) {
+            throw new Error('Login response did not include a token.');
+        }
+
+        setAuthToken(token);
         await SecureStore.setItemAsync('token', token);
         await SecureStore.setItemAsync('userId', userId);
         if (createdAt) {
@@ -50,6 +61,7 @@ export function AuthProvider({ children }) {
     }
 
     async function signOut() {
+        clearAuthToken();
         await SecureStore.deleteItemAsync('token');
         await SecureStore.deleteItemAsync('userId');
         await SecureStore.deleteItemAsync('accountCreatedAt');

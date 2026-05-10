@@ -337,6 +337,10 @@ async function syncOnce(accountCreatedAtIso) {
             console.warn('[StepSync] Open Health Connect manually from your app drawer/settings.');
             console.warn('[StepSync] Grant Willbinders permission to read Steps data');
             console.warn('[StepSync] Then return to Willbinders and try logging in again');
+        } else if (errorMsg.includes('HTTP 401')) {
+            console.warn('[StepSync] ⚠️ STEP SYNC UNAUTHORIZED');
+            console.warn('[StepSync] Your auth token is missing or expired.');
+            console.warn('[StepSync] Sign out and log back in, then sync will resume automatically.');
         } else {
             console.warn('[StepSync] Automatic step sync failed.', error);
             console.warn('[StepSync] Error details:', errorMsg);
