@@ -52,8 +52,7 @@
       [
         "react-native-health",
         {
-          "healthSharePermission": "Willbinders reads your step history to sync character power.",
-          "healthUpdatePermission": "Willbinders can write health data when needed."
+          "healthSharePermission": "Willbinders reads your step history to sync character power."
         }
       ]
     ]
