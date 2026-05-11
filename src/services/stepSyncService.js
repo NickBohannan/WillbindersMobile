@@ -1,4 +1,4 @@
-import { AppState, Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import AppleHealthKit from 'react-native-health';
 import {
@@ -12,8 +12,6 @@ import * as api from '../api';
 const PREVIOUS_DAY_SYNC_KEY = 'stepSyncPreviousDayKey';
 const HEALTH_CONNECT_PERMISSION_RETRY_MS = 15 * 60 * 1000;
 
-let intervalHandle = null;
-let appStateHandle = null;
 let inFlight = false;
 let hasInitializedAppleHealthKit = false;
 let hasInitializedHealthConnect = false;
@@ -268,7 +266,7 @@ async function readHistoricalSteps(startDate, endDate) {
 async function syncOnce(accountCreatedAtIso) {
     if (inFlight) {
         console.log('[StepSync] Sync already in flight, skipping.');
-        return;
+        return { outcome: 'skipped', reason: 'inFlight' };
     }
 
     inFlight = true;
@@ -285,13 +283,13 @@ async function syncOnce(accountCreatedAtIso) {
         const accountCreatedAt = normalizeDate(accountCreatedAtIso);
         if (accountCreatedAt && accountCreatedAt >= windowEnd) {
             console.log('[StepSync] Account created after previous-day window; skipping sync.');
-            return;
+            return { outcome: 'skipped', reason: 'accountTooNew' };
         }
 
         const previouslySyncedDay = await SecureStore.getItemAsync(PREVIOUS_DAY_SYNC_KEY);
         if (previouslySyncedDay === dayKey) {
             console.log('[StepSync] Previous day already synced for', dayKey, '- skipping.');
-            return;
+            return { outcome: 'skipped', reason: 'alreadySynced' };
         }
 
         console.log('[StepSync] Reading previous-day step history from', windowStart.toISOString(), 'to', windowEnd.toISOString());
@@ -305,7 +303,7 @@ async function syncOnce(accountCreatedAtIso) {
         if (sampledSteps <= 0) {
             console.log('[StepSync] No previous-day steps found, marking day as synced and skipping backend call.');
             await SecureStore.setItemAsync(PREVIOUS_DAY_SYNC_KEY, dayKey);
-            return;
+            return { outcome: 'skipped', reason: 'noSteps' };
         }
 
         const events = [
@@ -319,12 +317,17 @@ async function syncOnce(accountCreatedAtIso) {
 
         console.log('[StepSync] Built events:', JSON.stringify(events, null, 2));
         console.log('[StepSync] Sending sync request to backend...');
-        
+
         const response = await api.syncSteps(events, nowIso, Platform.OS, 'mobile');
         console.log('[StepSync] Backend response:', JSON.stringify(response, null, 2));
 
         await SecureStore.setItemAsync(PREVIOUS_DAY_SYNC_KEY, dayKey);
         console.log('[StepSync] Sync complete. Marked previous day as synced:', dayKey);
+        return {
+            outcome: 'success',
+            stepCount: sampledSteps,
+            powerGained: response?.AppliedStepDelta ?? 0,
+        };
     } catch (error) {
         const errorMsg = String(error?.message ?? error ?? '');
         if (
@@ -333,52 +336,31 @@ async function syncOnce(accountCreatedAtIso) {
             || errorMsg.includes('permission retry cooldown active')
         ) {
             console.warn('[StepSync] ⚠️ HEALTH CONNECT SETUP NEEDED');
-            console.warn('[StepSync] Auto-open is disabled to avoid UI lock-ups.');
-            console.warn('[StepSync] Open Health Connect manually from your app drawer/settings.');
-            console.warn('[StepSync] Grant Willbinders permission to read Steps data');
-            console.warn('[StepSync] Then return to Willbinders and try logging in again');
+            return {
+                outcome: 'error',
+                reason: 'permission',
+                message: 'Health Connect permission is required. Open Health Connect, grant Willbinders permission to read Steps, then log in again.',
+            };
         } else if (errorMsg.includes('HTTP 401')) {
             console.warn('[StepSync] ⚠️ STEP SYNC UNAUTHORIZED');
-            console.warn('[StepSync] Your auth token is missing or expired.');
-            console.warn('[StepSync] Sign out and log back in, then sync will resume automatically.');
+            return {
+                outcome: 'error',
+                reason: 'unauthorized',
+                message: 'Your session expired. Sign out and log back in to sync your steps.',
+            };
         } else {
-            console.warn('[StepSync] Automatic step sync failed.', error);
-            console.warn('[StepSync] Error details:', errorMsg);
+            console.warn('[StepSync] Step sync failed.', error);
+            return {
+                outcome: 'error',
+                reason: 'unknown',
+                message: 'Step sync failed. Try logging in again.',
+            };
         }
     } finally {
         inFlight = false;
     }
 }
 
-export function stopAutoStepSync() {
-    console.log('[StepSync] Stopping auto step sync.');
-    if (intervalHandle) {
-        clearInterval(intervalHandle);
-        intervalHandle = null;
-    }
-
-    if (appStateHandle) {
-        appStateHandle.remove();
-        appStateHandle = null;
-    }
-}
-
-export function startAutoStepSync(accountCreatedAtIso) {
-    console.log('[StepSync] Starting auto step sync. Account created:', accountCreatedAtIso);
-    stopAutoStepSync();
-
-    void syncOnce(accountCreatedAtIso);
-
-    intervalHandle = setInterval(() => {
-        console.log('[StepSync] Periodic sync triggered (every 2 minutes).');
-        void syncOnce(accountCreatedAtIso);
-    }, 120000);
-
-    appStateHandle = AppState.addEventListener('change', (state) => {
-        console.log('[StepSync] App state changed:', state);
-        if (state === 'active') {
-            console.log('[StepSync] App is active, triggering sync.');
-            void syncOnce(accountCreatedAtIso);
-        }
-    });
+export async function syncStepsOnLogin(accountCreatedAtIso) {
+    return await syncOnce(accountCreatedAtIso);
 }
