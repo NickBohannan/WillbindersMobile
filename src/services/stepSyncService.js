@@ -1,5 +1,4 @@
 import { Platform, PermissionsAndroid } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
 import AppleHealthKit from 'react-native-health';
 import {
     initialize,
@@ -9,7 +8,6 @@ import {
 } from 'react-native-health-connect';
 import * as api from '../api';
 
-const PREVIOUS_DAY_SYNC_KEY = 'stepSyncPreviousDayKey';
 const HEALTH_CONNECT_PERMISSION_RETRY_MS = 15 * 60 * 1000;
 
 let inFlight = false;
@@ -32,20 +30,6 @@ function normalizeDate(value) {
 
 function buildClientEventId(anchorIso, endIso, stepCount) {
     return `${anchorIso}|${endIso}|${stepCount}`;
-}
-
-function getPreviousDayWindow(referenceDate) {
-    const localTodayMidnight = new Date(referenceDate);
-    localTodayMidnight.setHours(0, 0, 0, 0);
-
-    const localYesterdayMidnight = new Date(localTodayMidnight);
-    localYesterdayMidnight.setDate(localYesterdayMidnight.getDate() - 1);
-
-    return {
-        start: localYesterdayMidnight,
-        end: localTodayMidnight,
-        dayKey: localYesterdayMidnight.toISOString().slice(0, 10),
-    };
 }
 
 async function initializeAppleHealthKit() {
@@ -263,36 +247,34 @@ async function readHistoricalSteps(startDate, endDate) {
     return 0;
 }
 
-async function syncOnce(accountCreatedAtIso) {
+async function syncOnce(lastLoginAtIso, accountCreatedAtIso) {
     if (inFlight) {
         console.log('[StepSync] Sync already in flight, skipping.');
         return { outcome: 'skipped', reason: 'inFlight' };
     }
 
     inFlight = true;
-    console.log('[StepSync] Starting sync. Platform:', Platform.OS, 'Account created:', accountCreatedAtIso);
+    console.log('[StepSync] Starting sync. Platform:', Platform.OS, 'Account created:', accountCreatedAtIso, 'Last login:', lastLoginAtIso);
     try {
         const now = new Date();
         console.log('[StepSync] Current time:', now.toISOString());
 
-        const previousDayWindow = getPreviousDayWindow(now);
-        const windowStart = previousDayWindow.start;
-        const windowEnd = previousDayWindow.end;
-        const dayKey = previousDayWindow.dayKey;
-
         const accountCreatedAt = normalizeDate(accountCreatedAtIso);
-        if (accountCreatedAt && accountCreatedAt >= windowEnd) {
-            console.log('[StepSync] Account created after previous-day window; skipping sync.');
+        const lastLoginAt = normalizeDate(lastLoginAtIso);
+        const windowEnd = now;
+        const windowStart = lastLoginAt ?? accountCreatedAt;
+
+        if (!windowStart) {
+            console.log('[StepSync] No valid sync start timestamp found. Skipping sync.');
+            return { outcome: 'skipped', reason: 'noWindowStart' };
+        }
+
+        if (windowStart >= windowEnd) {
+            console.log('[StepSync] Sync window start is not before now; skipping sync.');
             return { outcome: 'skipped', reason: 'accountTooNew' };
         }
 
-        const previouslySyncedDay = await SecureStore.getItemAsync(PREVIOUS_DAY_SYNC_KEY);
-        if (previouslySyncedDay === dayKey) {
-            console.log('[StepSync] Previous day already synced for', dayKey, '- skipping.');
-            return { outcome: 'skipped', reason: 'alreadySynced' };
-        }
-
-        console.log('[StepSync] Reading previous-day step history from', windowStart.toISOString(), 'to', windowEnd.toISOString());
+        console.log('[StepSync] Reading step history from', windowStart.toISOString(), 'to', windowEnd.toISOString());
         const sampledSteps = await readHistoricalSteps(windowStart, windowEnd);
         console.log('[StepSync] Steps read:', sampledSteps);
 
@@ -301,8 +283,7 @@ async function syncOnce(accountCreatedAtIso) {
         const nowIso = now.toISOString();
 
         if (sampledSteps <= 0) {
-            console.log('[StepSync] No previous-day steps found, marking day as synced and skipping backend call.');
-            await SecureStore.setItemAsync(PREVIOUS_DAY_SYNC_KEY, dayKey);
+            console.log('[StepSync] No steps found in this login window, skipping backend call.');
             return { outcome: 'skipped', reason: 'noSteps' };
         }
 
@@ -321,8 +302,7 @@ async function syncOnce(accountCreatedAtIso) {
         const response = await api.syncSteps(events, nowIso, Platform.OS, 'mobile');
         console.log('[StepSync] Backend response:', JSON.stringify(response, null, 2));
 
-        await SecureStore.setItemAsync(PREVIOUS_DAY_SYNC_KEY, dayKey);
-        console.log('[StepSync] Sync complete. Marked previous day as synced:', dayKey);
+        console.log('[StepSync] Sync complete for login window.');
         return {
             outcome: 'success',
             stepCount: sampledSteps,
@@ -361,6 +341,6 @@ async function syncOnce(accountCreatedAtIso) {
     }
 }
 
-export async function syncStepsOnLogin(accountCreatedAtIso) {
-    return await syncOnce(accountCreatedAtIso);
+export async function syncStepsOnLogin(lastLoginAtIso, accountCreatedAtIso) {
+    return await syncOnce(lastLoginAtIso, accountCreatedAtIso);
 }
