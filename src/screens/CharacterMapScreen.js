@@ -15,7 +15,6 @@ import {
 import { useFonts } from 'expo-font';
 import * as api from '../api';
 
-const POLL_INTERVAL = 30000;
 const TOAST_DURATION_MS = 5000;
 const MAP_BACKGROUND = require('../../assets/testmap.png');
 const MODULE_FONT_FAMILY = 'alagard';
@@ -50,6 +49,8 @@ export default function CharacterMapScreen({ route, navigation }) {
     const [toasts, setToasts] = useState([]);
     const [isCharacterOverlayVisible, setIsCharacterOverlayVisible] = useState(false);
     const [selectedZoneSnapshot, setSelectedZoneSnapshot] = useState(null);
+    const [isZoneSelectorVisible, setIsZoneSelectorVisible] = useState(false);
+    const [isZoneSwitching, setIsZoneSwitching] = useState(false);
     const toastTimersRef = useRef({});
     const teamNameLookupRef = useRef({});
 
@@ -73,16 +74,6 @@ export default function CharacterMapScreen({ route, navigation }) {
     useEffect(() => {
         teamNameLookupRef.current = buildTeamNameLookup(mapCharacters);
     }, [mapCharacters]);
-
-    const fetchCharactersInMap = useCallback(async () => {
-        try {
-            const data = await api.getCharactersInMap(mapId);
-            setMapCharacters(data?.Characters ?? []);
-            setErrors((prev) => ({ ...prev, characters: undefined }));
-        } catch (e) {
-            setErrors((prev) => ({ ...prev, characters: e.message || 'Failed to load characters.' }));
-        }
-    }, [mapId]);
 
     const fetchAll = useCallback(async (showLoading = false) => {
         if (showLoading) setLoading(true);
@@ -109,9 +100,7 @@ export default function CharacterMapScreen({ route, navigation }) {
 
     useEffect(() => {
         fetchAll(true);
-        const interval = setInterval(() => fetchCharactersInMap(), POLL_INTERVAL);
-        return () => clearInterval(interval);
-    }, [fetchAll, fetchCharactersInMap]);
+    }, [fetchAll]);
 
     useEffect(() => {
         if (!mapId) return undefined;
@@ -140,7 +129,30 @@ export default function CharacterMapScreen({ route, navigation }) {
             socket.onmessage = (event) => {
                 try {
                     const message = JSON.parse(event.data);
+                    // All map/zone/control updates are now handled via WebSocket
                     if (message?.Map) setMapData(message.Map);
+
+                    if (message?.Type === 'characterUpdated' && message?.Character) {
+                        const updatedChar = message.Character;
+
+                        setMapCharacters((prev) => {
+                            const existingIndex = prev.findIndex((c) => c?.CharacterId === updatedChar?.CharacterId);
+                            if (existingIndex === -1) {
+                                return [...prev, updatedChar];
+                            }
+
+                            const next = [...prev];
+                            next[existingIndex] = { ...next[existingIndex], ...updatedChar };
+                            return next;
+                        });
+
+                        if (updatedChar.CharacterId === character.CharacterId) {
+                            character.Power = updatedChar.Power;
+                            character.CurrentZone = updatedChar.CurrentZone;
+                            character.CurrentMap = updatedChar.CurrentMap;
+                            character.Experience = updatedChar.Experience;
+                        }
+                    }
 
                     const toastTeamLookup = teamNameLookupRef.current;
 
@@ -211,6 +223,28 @@ export default function CharacterMapScreen({ route, navigation }) {
         ? mapCharacters.filter((mapCharacter) => isCharacterInZone(mapCharacter, selectedZoneSnapshot.zoneId))
         : [];
 
+    const handleSwitchZone = useCallback(async (zoneId) => {
+        setIsZoneSwitching(true);
+        try {
+            await api.changeCharacterZone(character.CharacterId, zoneId);
+            // Update the character's zone in memory to reflect the change immediately
+            character.CurrentZone = zoneId;
+            const zone = zones.find(z => (z.ZoneId ?? z.Id) === zoneId);
+            const zoneName = zone?.Name ?? 'Unknown Zone';
+            addToast(`zone-switch-${zoneId}`, 'capture', `Switched to ${zoneName}`);
+            setIsZoneSelectorVisible(false);
+            // Refresh map data after zone switch to get updated character list for zones
+            const data = await api.getMap(mapId);
+            setMapData(data ?? null);
+            // Force re-render by triggering state update
+            setMapData((prev) => (prev ? { ...prev } : null));
+        } catch (e) {
+            addToast(`zone-switch-error-${Date.now()}`, 'error', e.message || 'Failed to switch zone.');
+        } finally {
+            setIsZoneSwitching(false);
+        }
+    }, [character.CharacterId, mapId, zones, addToast]);
+
     if (loading || !fontsLoaded) {
         return (
             <View style={styles.centered}>
@@ -229,7 +263,11 @@ export default function CharacterMapScreen({ route, navigation }) {
                                     key={toast.id}
                                     style={[
                                         styles.toast,
-                                        toast.type === 'win' ? styles.toastWin : styles.toastCapture,
+                                        toast.type === 'win' 
+                                            ? styles.toastWin 
+                                            : toast.type === 'error'
+                                                ? styles.toastError
+                                                : styles.toastCapture,
                                     ]}
                                 >
                                     <Text style={styles.toastText}>{toast.text}</Text>
@@ -327,6 +365,15 @@ export default function CharacterMapScreen({ route, navigation }) {
                         <InfoRow label="Experience" value={character.Experience} />
                         <InfoRow label="Zone" value={zones.find(z => z.Id === character.CurrentZone)?.Name ?? character.CurrentZone} />
                         <Pressable
+                            style={styles.zoneActionButton}
+                            onPress={() => {
+                                setIsCharacterOverlayVisible(false);
+                                setIsZoneSelectorVisible(true);
+                            }}
+                        >
+                            <Text style={styles.zoneActionButtonText}>Switch Zone</Text>
+                        </Pressable>
+                        <Pressable
                             style={styles.stepButton}
                             onPress={() => {
                                 setIsCharacterOverlayVisible(false);
@@ -375,6 +422,56 @@ export default function CharacterMapScreen({ route, navigation }) {
                         </ScrollView>
 
                         <Pressable style={styles.modalCloseButton} onPress={() => setSelectedZoneSnapshot(null)}>
+                            <Text style={styles.modalCloseText}>Close</Text>
+                        </Pressable>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+
+            <Modal
+                visible={isZoneSelectorVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsZoneSelectorVisible(false)}
+            >
+                <Pressable style={styles.modalBackdrop} onPress={() => setIsZoneSelectorVisible(false)}>
+                    <Pressable style={styles.zoneModalCard} onPress={() => { }}>
+                        <Text style={styles.modalSubtitle}>
+                            Select Zone to Switch
+                        </Text>
+
+                        <ScrollView style={styles.modalList} contentContainerStyle={styles.modalListContent}>
+                            {zones.length === 0 && (
+                                <Text style={styles.empty}>No zones available.</Text>
+                            )}
+                            {zones.map((zone) => {
+                                const isCurrentZone = (zone.ZoneId ?? zone.Id) === character.CurrentZone;
+                                return (
+                                    <Pressable
+                                        key={zone.ZoneId ?? zone.Id}
+                                        style={[styles.zoneSelectRow, isCurrentZone && styles.zoneSelectRowActive]}
+                                        onPress={() => {
+                                            if (!isCurrentZone && !isZoneSwitching) {
+                                                handleSwitchZone(zone.ZoneId ?? zone.Id);
+                                            }
+                                        }}
+                                        disabled={isCurrentZone || isZoneSwitching}
+                                    >
+                                        <Text
+                                            style={[styles.zoneSelectRowText, isCurrentZone && styles.zoneSelectRowTextActive]}
+                                            numberOfLines={1}
+                                        >
+                                            {zone.Name ?? 'Unnamed Zone'}{isCurrentZone ? ' (current)' : ''}
+                                        </Text>
+                                        {isZoneSwitching && (zone.ZoneId ?? zone.Id) === character.CurrentZone && (
+                                            <ActivityIndicator size="small" color="#e94560" />
+                                        )}
+                                    </Pressable>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <Pressable style={styles.modalCloseButton} onPress={() => setIsZoneSelectorVisible(false)}>
                             <Text style={styles.modalCloseText}>Close</Text>
                         </Pressable>
                     </Pressable>
@@ -483,6 +580,11 @@ const styles = StyleSheet.create({
         backgroundColor: '#203a2d',
         borderWidth: 1,
         borderColor: '#95d5b2',
+    },
+    toastError: {
+        backgroundColor: '#3a1a1a',
+        borderWidth: 1,
+        borderColor: '#ff6b6b',
     },
     toastText: { color: '#e0e0e0', fontSize: 14, fontWeight: '600', fontFamily: MODULE_FONT_FAMILY },
     socketBadge: { color: '#8ea3c7', fontSize: 11 },
@@ -701,5 +803,43 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontWeight: '600',
         fontFamily: MODULE_FONT_FAMILY,
+    },
+    zoneActionButton: {
+        marginTop: 8,
+        marginBottom: 8,
+        backgroundColor: '#1a5c1a',
+        borderWidth: 2,
+        borderColor: '#f5c518',
+        borderRadius: 0,
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    zoneActionButtonText: {
+        color: '#d8f3dc',
+        fontWeight: '600',
+        fontFamily: MODULE_FONT_FAMILY,
+    },
+    zoneSelectRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#0f3460',
+    },
+    zoneSelectRowActive: {
+        backgroundColor: '#1a3060',
+        borderRadius: 6,
+    },
+    zoneSelectRowText: {
+        color: '#e0e0e0',
+        fontSize: 14,
+        flex: 1,
+        fontFamily: MODULE_FONT_FAMILY,
+    },
+    zoneSelectRowTextActive: {
+        color: '#95d5b2',
+        fontWeight: '600',
     },
 });
