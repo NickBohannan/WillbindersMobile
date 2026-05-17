@@ -51,7 +51,7 @@ export default function SelectCharacterScreen({ navigation, route }) {
         navigation.navigate('CharacterMap', { character });
     }
 
-    async function openHallOfChampions() {
+    async function openHallOfLegends() {
         setHallVisible(true);
 
         if (champions.length > 0 || hallLoading) {
@@ -62,7 +62,7 @@ export default function SelectCharacterScreen({ navigation, route }) {
         setHallError(null);
 
         try {
-            const data = await api.getHallOfChampions();
+            const data = await api.getHallOfLegends(userId);
             const historyRecords = Array.isArray(data) ? data : [];
             const championStats = new Map();
 
@@ -109,13 +109,13 @@ export default function SelectCharacterScreen({ navigation, route }) {
 
             setChampions(sortedChampions);
         } catch (e) {
-            setHallError(e.message || 'Failed to load Hall of Champions.');
+            setHallError(e.message || 'Failed to load Hall of Legends.');
         } finally {
             setHallLoading(false);
         }
     }
 
-    function closeHallOfChampions() {
+    function closeHallOfLegends() {
         setHallVisible(false);
     }
 
@@ -131,8 +131,8 @@ export default function SelectCharacterScreen({ navigation, route }) {
         <SafeAreaView style={styles.container}>
             <Text style={styles.title}>Your Characters</Text>
             <View style={styles.actionsRow}>
-                <Pressable style={styles.hallButton} onPress={openHallOfChampions}>
-                    <Text style={styles.hallButtonText}>Hall of Champions</Text>
+                <Pressable style={styles.hallButton} onPress={openHallOfLegends}>
+                    <Text style={styles.hallButtonText}>Hall of Legends</Text>
                 </Pressable>
             </View>
 
@@ -183,13 +183,13 @@ export default function SelectCharacterScreen({ navigation, route }) {
                 visible={hallVisible}
                 animationType="slide"
                 transparent
-                onRequestClose={closeHallOfChampions}
+                onRequestClose={closeHallOfLegends}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalCard}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Hall of Champions</Text>
-                            <Pressable style={styles.modalCloseButton} onPress={closeHallOfChampions}>
+                            <Text style={styles.modalTitle}>Hall of Legends</Text>
+                            <Pressable style={styles.modalCloseButton} onPress={closeHallOfLegends}>
                                 <Text style={styles.modalCloseText}>Close</Text>
                             </Pressable>
                         </View>

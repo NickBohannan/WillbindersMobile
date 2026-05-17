@@ -69,8 +69,8 @@ export const getCharactersByUserId = (userId) =>
 export const getCharactersInMap = (mapId) =>
     request('GET', `/api/RealmData/GetAllCharactersInMapAsync/${mapId}`);
 
-export const getHallOfChampions = () =>
-    request('GET', '/api/RealmData/HallOfChampions');
+export const getHallOfLegends = (userId) =>
+    request('GET', `/api/RealmData/HallOfLegends/${userId}`);
 
 export const getAllTeams = () =>
     request('GET', '/api/RealmData/GetAllTeamsAsync');
