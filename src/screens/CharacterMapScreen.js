@@ -373,14 +373,6 @@ export default function CharacterMapScreen({ route, navigation }) {
                         >
                             <Text style={styles.zoneActionButtonText}>Switch Zone</Text>
                         </Pressable>
-                        <Pressable
-                            style={styles.stepButton}
-                            onPress={() => {
-                                setIsCharacterOverlayVisible(false);
-                            }}
-                        >
-                            <Text style={styles.stepButtonText}>Step Sync Is Automatic</Text>
-                        </Pressable>
                         <Pressable style={styles.modalCloseButton} onPress={() => setIsCharacterOverlayVisible(false)}>
                             <Text style={styles.modalCloseText}>Close</Text>
                         </Pressable>
@@ -724,14 +716,6 @@ const styles = StyleSheet.create({
         marginTop: 4,
         fontFamily: MODULE_FONT_FAMILY,
     },
-    stepButton: {
-        backgroundColor: '#0f3460',
-        borderRadius: 8,
-        padding: 10,
-        alignItems: 'center',
-        marginTop: 10,
-    },
-    stepButtonText: { color: '#e0e0e0', fontWeight: 'bold', fontFamily: MODULE_FONT_FAMILY },
     error: { color: '#e94560', fontSize: 13, marginBottom: 6, fontFamily: MODULE_FONT_FAMILY },
     empty: { color: '#a0a0c0', fontSize: 13, fontFamily: MODULE_FONT_FAMILY },
     modalBackdrop: {
