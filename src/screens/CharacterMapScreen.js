@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -16,6 +16,10 @@ import { useFonts } from 'expo-font';
 import * as api from '../api';
 
 const TOAST_DURATION_MS = 5000;
+const NEUTRALIZE_ANIMATION_MS = 700;
+const CAPTURE_ANIMATION_MS = 700;
+const NEUTRAL_HOLD_MS = 140;
+const ANIMATION_FRAME_MS = 33;
 const MAP_BACKGROUND = require('../../assets/testmap.png');
 const MODULE_FONT_FAMILY = 'alagard';
 const ZONE_PIN_LAYOUTS = [
@@ -51,7 +55,16 @@ export default function CharacterMapScreen({ route, navigation }) {
     const [selectedZoneSnapshot, setSelectedZoneSnapshot] = useState(null);
     const [isZoneSelectorVisible, setIsZoneSelectorVisible] = useState(false);
     const [isZoneSwitching, setIsZoneSwitching] = useState(false);
+    const [zoneDisplayProgressById, setZoneDisplayProgressById] = useState({});
+    const [zoneProgressTrendById, setZoneProgressTrendById] = useState({});
+    const [zoneStatusOverrideById, setZoneStatusOverrideById] = useState({});
     const toastTimersRef = useRef({});
+    const zoneAnimationIntervalsRef = useRef({});
+    const zoneNeutralHoldTimersRef = useRef({});
+    const zoneAnimatingRef = useRef({});
+    const zonePendingSnapshotRef = useRef({});
+    const zonePreviousSnapshotRef = useRef({});
+    const zoneDisplayProgressRef = useRef({});
     const teamNameLookupRef = useRef({});
 
     const addToast = useCallback((id, type, text) => {
@@ -69,6 +82,19 @@ export default function CharacterMapScreen({ route, navigation }) {
     useEffect(() => {
         const timers = toastTimersRef.current;
         return () => { Object.values(timers).forEach(clearTimeout); };
+    }, []);
+
+    useEffect(() => {
+        zoneDisplayProgressRef.current = zoneDisplayProgressById;
+    }, [zoneDisplayProgressById]);
+
+    useEffect(() => {
+        const intervals = zoneAnimationIntervalsRef.current;
+        const holdTimers = zoneNeutralHoldTimersRef.current;
+        return () => {
+            Object.values(intervals).forEach(clearInterval);
+            Object.values(holdTimers).forEach(clearTimeout);
+        };
     }, []);
 
     useEffect(() => {
@@ -193,19 +219,21 @@ export default function CharacterMapScreen({ route, navigation }) {
     }, [mapId, addToast]);
 
     const zones = Array.isArray(mapData?.Zones) ? mapData.Zones : [];
-    const teamNameById = buildTeamNameLookup(mapCharacters);
-    const stableZones = [...zones].sort((a, b) => compareZonesForStablePins(a, b));
+    const teamNameById = useMemo(() => buildTeamNameLookup(mapCharacters), [mapCharacters]);
+    const stableZones = useMemo(() => [...zones].sort((a, b) => compareZonesForStablePins(a, b)), [zones]);
     const winningTeamLabel = formatTeamLabel(mapData?.WinningTeamId, teamNameById);
-    const zoneSnapshots = stableZones.map((zone) => {
+    const zoneSnapshots = useMemo(() => stableZones.map((zone) => {
         const zoneId = zone.ZoneId ?? zone.Id;
         const isCurrent = zoneId === character.CurrentZone;
         const controllingTeamLabel = formatTeamLabel(zone.ControllingTeamId, teamNameById);
         const capturingTeamLabel = formatTeamLabel(zone.CapturingTeamId, teamNameById);
-        const leadingControl = Number(zone.LeadingControlPercentage ?? 0);
+        const leadingControlRaw = Number(zone.LeadingControlPercentage ?? 0);
         const maxControlPoints = Number(zone.MaxControlPoints ?? 100);
-        const progress = maxControlPoints > 0
-            ? Math.min((leadingControl / maxControlPoints) * 1000, 1000)
+        const normalizedLeadingControl = Number.isFinite(leadingControlRaw)
+            ? Math.max(0, Math.min(leadingControlRaw, 100))
             : 0;
+        const leadingControl = normalizedLeadingControl;
+        const progress = normalizedLeadingControl;
 
         return {
             zone,
@@ -217,7 +245,207 @@ export default function CharacterMapScreen({ route, navigation }) {
             maxControlPoints,
             progress,
         };
-    });
+    }), [stableZones, character.CurrentZone, teamNameById]);
+
+    const animateZoneProgress = useCallback((zoneKey, from, to, durationMs, onComplete) => {
+        const currentIntervals = zoneAnimationIntervalsRef.current;
+        if (currentIntervals[zoneKey]) {
+            clearInterval(currentIntervals[zoneKey]);
+            delete currentIntervals[zoneKey];
+        }
+
+        if (!Number.isFinite(from) || !Number.isFinite(to) || durationMs <= 0 || Math.abs(to - from) < 0.01) {
+            setZoneProgressTrendById((prev) => {
+                const trend = to > from ? 'increasing' : to < from ? 'decreasing' : 'steady';
+                if (prev[zoneKey] === trend) return prev;
+                return { ...prev, [zoneKey]: trend };
+            });
+
+            setZoneDisplayProgressById((prev) => {
+                if (prev[zoneKey] === to) return prev;
+                return { ...prev, [zoneKey]: to };
+            });
+
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const start = Date.now();
+        const totalDelta = to - from;
+        setZoneProgressTrendById((prev) => {
+            const trend = to > from ? 'increasing' : 'decreasing';
+            if (prev[zoneKey] === trend) return prev;
+            return { ...prev, [zoneKey]: trend };
+        });
+
+        const intervalId = setInterval(() => {
+            const elapsed = Date.now() - start;
+            const t = Math.min(elapsed / durationMs, 1);
+            const nextValue = Math.max(0, Math.min(100, from + totalDelta * t));
+
+            setZoneDisplayProgressById((prev) => {
+                if (prev[zoneKey] === nextValue) return prev;
+                return { ...prev, [zoneKey]: nextValue };
+            });
+
+            if (t >= 1) {
+                clearInterval(intervalId);
+                delete zoneAnimationIntervalsRef.current[zoneKey];
+                if (onComplete) onComplete();
+            }
+        }, ANIMATION_FRAME_MS);
+
+        zoneAnimationIntervalsRef.current[zoneKey] = intervalId;
+    }, []);
+
+    useEffect(() => {
+        const activeZoneIds = new Set(zoneSnapshots.map((snapshot) => String(snapshot.zoneId)));
+
+        for (const key of Object.keys(zoneDisplayProgressRef.current)) {
+            if (!activeZoneIds.has(key)) {
+                if (zoneAnimationIntervalsRef.current[key]) {
+                    clearInterval(zoneAnimationIntervalsRef.current[key]);
+                    delete zoneAnimationIntervalsRef.current[key];
+                }
+
+                if (zoneNeutralHoldTimersRef.current[key]) {
+                    clearTimeout(zoneNeutralHoldTimersRef.current[key]);
+                    delete zoneNeutralHoldTimersRef.current[key];
+                }
+
+                delete zoneAnimatingRef.current[key];
+                delete zonePendingSnapshotRef.current[key];
+                delete zonePreviousSnapshotRef.current[key];
+
+                setZoneDisplayProgressById((prev) => {
+                    if (!(key in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[key];
+                    return next;
+                });
+
+                setZoneProgressTrendById((prev) => {
+                    if (!(key in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[key];
+                    return next;
+                });
+
+                setZoneStatusOverrideById((prev) => {
+                    if (!(key in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[key];
+                    return next;
+                });
+            }
+        }
+
+        for (const snapshot of zoneSnapshots) {
+            const zoneKey = String(snapshot.zoneId);
+            const currentOwnerTeamId = snapshot.zone.ControllingTeamId ?? null;
+            const previousSnapshot = zonePreviousSnapshotRef.current[zoneKey] ?? null;
+
+            if (zoneAnimatingRef.current[zoneKey]) {
+                zonePendingSnapshotRef.current[zoneKey] = snapshot;
+                zonePreviousSnapshotRef.current[zoneKey] = {
+                    ownerTeamId: currentOwnerTeamId,
+                    progress: snapshot.progress,
+                };
+                continue;
+            }
+
+            const hasDirectOwnerFlip = Boolean(
+                previousSnapshot?.ownerTeamId
+                && currentOwnerTeamId
+                && previousSnapshot.ownerTeamId !== currentOwnerTeamId
+            );
+
+            if (hasDirectOwnerFlip) {
+                const startProgress = Number(zoneDisplayProgressRef.current[zoneKey] ?? previousSnapshot.progress ?? 100);
+                const takeoverTeamId = snapshot.zone.CapturingTeamId ?? currentOwnerTeamId;
+
+                zoneAnimatingRef.current[zoneKey] = true;
+                zonePendingSnapshotRef.current[zoneKey] = snapshot;
+
+                setZoneStatusOverrideById((prev) => ({
+                    ...prev,
+                    [zoneKey]: { phase: 'neutralizing', teamId: takeoverTeamId },
+                }));
+
+                animateZoneProgress(zoneKey, startProgress, 0, NEUTRALIZE_ANIMATION_MS, () => {
+                    setZoneStatusOverrideById((prev) => ({
+                        ...prev,
+                        [zoneKey]: { phase: 'neutral', teamId: null },
+                    }));
+
+                    if (zoneNeutralHoldTimersRef.current[zoneKey]) {
+                        clearTimeout(zoneNeutralHoldTimersRef.current[zoneKey]);
+                    }
+
+                    zoneNeutralHoldTimersRef.current[zoneKey] = setTimeout(() => {
+                        const latestSnapshot = zonePendingSnapshotRef.current[zoneKey] ?? snapshot;
+                        const captureTeamId = latestSnapshot.zone.CapturingTeamId ?? latestSnapshot.zone.ControllingTeamId ?? takeoverTeamId;
+                        const captureTarget = Number(latestSnapshot.progress ?? 0);
+
+                        setZoneStatusOverrideById((prev) => ({
+                            ...prev,
+                            [zoneKey]: { phase: 'capturing', teamId: captureTeamId },
+                        }));
+
+                        animateZoneProgress(zoneKey, 0, captureTarget, CAPTURE_ANIMATION_MS, () => {
+                            zoneAnimatingRef.current[zoneKey] = false;
+                            delete zonePendingSnapshotRef.current[zoneKey];
+
+                            setZoneStatusOverrideById((prev) => {
+                                if (!(zoneKey in prev)) return prev;
+                                const next = { ...prev };
+                                delete next[zoneKey];
+                                return next;
+                            });
+
+                            setZoneDisplayProgressById((prev) => {
+                                if (prev[zoneKey] === captureTarget) return prev;
+                                return { ...prev, [zoneKey]: captureTarget };
+                            });
+
+                            setZoneProgressTrendById((prev) => ({ ...prev, [zoneKey]: 'steady' }));
+                        });
+
+                        delete zoneNeutralHoldTimersRef.current[zoneKey];
+                    }, NEUTRAL_HOLD_MS);
+                });
+            } else {
+                const previousDisplayedProgress = Number(zoneDisplayProgressRef.current[zoneKey] ?? snapshot.progress);
+                const nextTrend = snapshot.progress > previousDisplayedProgress
+                    ? 'increasing'
+                    : snapshot.progress < previousDisplayedProgress
+                        ? 'decreasing'
+                        : 'steady';
+
+                setZoneProgressTrendById((prev) => {
+                    if (prev[zoneKey] === nextTrend) return prev;
+                    return { ...prev, [zoneKey]: nextTrend };
+                });
+
+                setZoneDisplayProgressById((prev) => {
+                    if (prev[zoneKey] === snapshot.progress) return prev;
+                    return { ...prev, [zoneKey]: snapshot.progress };
+                });
+
+                setZoneStatusOverrideById((prev) => {
+                    if (!(zoneKey in prev)) return prev;
+                    const next = { ...prev };
+                    delete next[zoneKey];
+                    return next;
+                });
+            }
+
+            zonePreviousSnapshotRef.current[zoneKey] = {
+                ownerTeamId: currentOwnerTeamId,
+                progress: snapshot.progress,
+            };
+        }
+    }, [animateZoneProgress, zoneSnapshots]);
 
     const selectedZoneCharacters = selectedZoneSnapshot
         ? mapCharacters.filter((mapCharacter) => isCharacterInZone(mapCharacter, selectedZoneSnapshot.zoneId))
@@ -310,6 +538,20 @@ export default function CharacterMapScreen({ route, navigation }) {
                         <View style={styles.zonePinsLayer} pointerEvents="box-none">
                             {zoneSnapshots.map((snapshot, index) => {
                                 const pinLayout = getZonePinLayout(index);
+                                const zoneKey = String(snapshot.zoneId);
+                                const override = zoneStatusOverrideById[zoneKey];
+                                const isNeutralizingPhase = override?.phase === 'neutralizing' || snapshot.zone.IsNeutralizing;
+                                const isNeutralPhase = override?.phase === 'neutral';
+
+                                const barFillStyle = isNeutralizingPhase
+                                    ? styles.zonePinProgressFillNeutralizing
+                                    : isNeutralPhase
+                                        ? styles.zonePinProgressFillNeutral
+                                        : styles.zonePinProgressFillSteady;
+
+                                const barWidth = isNeutralizingPhase || isNeutralPhase
+                                    ? '100%'
+                                    : `${zoneDisplayProgressById[zoneKey] ?? snapshot.progress}%`;
 
                                 return (
                                     <View key={snapshot.zoneId} style={[styles.zonePin, pinLayout]} pointerEvents="box-none">
@@ -321,17 +563,23 @@ export default function CharacterMapScreen({ route, navigation }) {
                                                 {snapshot.zone.Name ?? 'Unnamed Zone'}{snapshot.isCurrent ? ' (you)' : ''}
                                             </Text>
                                             <Text style={styles.zonePinStatus} numberOfLines={1}>
-                                                {snapshot.zone.ControllingTeamId
-                                                    ? `Held: ${snapshot.controllingTeamLabel}`
-                                                    : snapshot.zone.CapturingTeamId
-                                                        ? `Capturing: ${snapshot.capturingTeamLabel}`
-                                                        : 'Neutral'}
+                                                {formatZoneStatusText(
+                                                    snapshot,
+                                                    zoneStatusOverrideById[String(snapshot.zoneId)],
+                                                    teamNameById,
+                                                )}
                                             </Text>
                                             <View style={styles.zonePinProgressTrack}>
-                                                <View style={[styles.zonePinProgressFill, { width: `${snapshot.progress}%` }]} />
+                                                <View
+                                                    style={[
+                                                        styles.zonePinProgressFill,
+                                                        barFillStyle,
+                                                        { width: barWidth },
+                                                    ]}
+                                                />
                                             </View>
                                             <Text style={styles.zonePinMeta}>
-                                                {snapshot.zone.IsContested ? 'Contested' : 'Clear'} | {snapshot.leadingControl.toFixed(0)} / {snapshot.maxControlPoints}
+                                                {snapshot.zone.IsContested ? 'Contested' : 'Clear'} | {snapshot.leadingControl.toFixed(1)}%
                                             </Text>
                                         </Pressable>
                                     </View>
@@ -528,6 +776,34 @@ function compareZonesForStablePins(zoneA, zoneB) {
     return idA.localeCompare(idB);
 }
 
+function formatZoneStatusText(snapshot, override, teamNameById) {
+    if (override?.phase === 'neutralizing') {
+        return `Neutralizing: ${formatTeamLabel(override.teamId, teamNameById)}`;
+    }
+
+    if (override?.phase === 'capturing') {
+        return `Capturing: ${formatTeamLabel(override.teamId, teamNameById)}`;
+    }
+
+    if (override?.phase === 'neutral') {
+        return 'Neutral';
+    }
+
+    if (snapshot.zone.ControllingTeamId && snapshot.zone.CapturingTeamId && snapshot.zone.ControllingTeamId !== snapshot.zone.CapturingTeamId) {
+        return `Neutralizing: ${snapshot.capturingTeamLabel}`;
+    }
+
+    if (snapshot.zone.ControllingTeamId) {
+        return `Held: ${snapshot.controllingTeamLabel}`;
+    }
+
+    if (snapshot.zone.CapturingTeamId) {
+        return `Capturing: ${snapshot.capturingTeamLabel}`;
+    }
+
+    return 'Neutral';
+}
+
 function InfoRow({ label, value, mono }) {
     return (
         <View style={styles.infoRow}>
@@ -707,8 +983,22 @@ const styles = StyleSheet.create({
     },
     zonePinProgressFill: {
         height: '100%',
-        backgroundColor: '#e94560',
         borderRadius: 999,
+    },
+    zonePinProgressFillIncreasing: {
+        backgroundColor: '#4ade80',
+    },
+    zonePinProgressFillDecreasing: {
+        backgroundColor: '#f97316',
+    },
+    zonePinProgressFillNeutralizing: {
+        backgroundColor: '#7c3aed',
+    },
+    zonePinProgressFillNeutral: {
+        backgroundColor: '#9ca3af',
+    },
+    zonePinProgressFillSteady: {
+        backgroundColor: '#e94560',
     },
     zonePinMeta: {
         color: '#8ea3c7',
