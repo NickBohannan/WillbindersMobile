@@ -247,6 +247,44 @@ export default function CharacterMapScreen({ route, navigation }) {
         };
     }), [stableZones, character.CurrentZone, teamNameById]);
 
+    const dominantTeamLabelByZoneId = useMemo(() => {
+        const powerByZoneThenTeam = {};
+
+        for (const mapCharacter of mapCharacters ?? []) {
+            const zoneId = String(
+                mapCharacter?.CurrentZone
+                ?? mapCharacter?.currentZone
+                ?? mapCharacter?.ZoneId
+                ?? mapCharacter?.zoneId
+                ?? '',
+            );
+            const teamId = mapCharacter?.TeamId;
+            const power = Number(mapCharacter?.Power ?? 0);
+
+            if (!zoneId || !teamId || !Number.isFinite(power)) {
+                continue;
+            }
+
+            if (!powerByZoneThenTeam[zoneId]) {
+                powerByZoneThenTeam[zoneId] = {};
+            }
+
+            powerByZoneThenTeam[zoneId][teamId] = (powerByZoneThenTeam[zoneId][teamId] ?? 0) + power;
+        }
+
+        const dominantByZone = {};
+        for (const [zoneId, teamPower] of Object.entries(powerByZoneThenTeam)) {
+            const orderedTeams = Object.entries(teamPower).sort((a, b) => Number(b[1]) - Number(a[1]));
+            if (orderedTeams.length === 0) {
+                continue;
+            }
+
+            dominantByZone[zoneId] = formatTeamLabel(orderedTeams[0][0], teamNameById);
+        }
+
+        return dominantByZone;
+    }, [mapCharacters, teamNameById]);
+
     const animateZoneProgress = useCallback((zoneKey, from, to, durationMs, onComplete) => {
         const currentIntervals = zoneAnimationIntervalsRef.current;
         if (currentIntervals[zoneKey]) {
@@ -567,6 +605,8 @@ export default function CharacterMapScreen({ route, navigation }) {
                                                     snapshot,
                                                     zoneStatusOverrideById[String(snapshot.zoneId)],
                                                     teamNameById,
+                                                    zoneProgressTrendById[zoneKey],
+                                                    dominantTeamLabelByZoneId[zoneKey],
                                                 )}
                                             </Text>
                                             <View style={styles.zonePinProgressTrack}>
@@ -776,7 +816,7 @@ function compareZonesForStablePins(zoneA, zoneB) {
     return idA.localeCompare(idB);
 }
 
-function formatZoneStatusText(snapshot, override, teamNameById) {
+function formatZoneStatusText(snapshot, override, teamNameById, trend, dominantTeamLabel) {
     if (override?.phase === 'neutralizing') {
         return `Neutralizing: ${formatTeamLabel(override.teamId, teamNameById)}`;
     }
@@ -787,6 +827,10 @@ function formatZoneStatusText(snapshot, override, teamNameById) {
 
     if (override?.phase === 'neutral') {
         return 'Neutral';
+    }
+
+    if (trend === 'decreasing') {
+        return `Neutralizing: ${dominantTeamLabel ?? snapshot.capturingTeamLabel ?? 'Unknown'}`;
     }
 
     if (snapshot.zone.ControllingTeamId && snapshot.zone.CapturingTeamId && snapshot.zone.ControllingTeamId !== snapshot.zone.CapturingTeamId) {
