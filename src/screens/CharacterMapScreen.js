@@ -39,7 +39,7 @@ const ZONE_PIN_LAYOUTS = [
 
 export default function CharacterMapScreen({ route, navigation }) {
     const { character } = route.params;
-    const mapId = character?.CurrentMap;
+    const mapId = route?.params?.mapId ?? character?.CurrentMap;
     const [fontsLoaded] = useFonts({
         [MODULE_FONT_FAMILY]: require('../../assets/alagard.ttf'),
     });

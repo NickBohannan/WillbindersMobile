@@ -36,6 +36,7 @@ export default function CreateCharacterScreen({ navigation }) {
 
                 const loadedTeams = Array.isArray(teamData) ? teamData : [];
                 const loadedMaps = Array.isArray(mapData) ? mapData : [];
+                const unlockedMaps = loadedMaps.filter((map) => !map?.RosterLocked);
 
                 setTeams(loadedTeams);
                 setMaps(loadedMaps);
@@ -45,7 +46,7 @@ export default function CreateCharacterScreen({ navigation }) {
                 }
 
                 if (loadedMaps.length > 0) {
-                    setSelectedMapId(loadedMaps[0].MapId);
+                    setSelectedMapId((unlockedMaps[0] ?? loadedMaps[0]).MapId);
                 }
             } catch (e) {
                 setError(e.message || 'Failed to load create-character data.');
@@ -122,6 +123,9 @@ export default function CreateCharacterScreen({ navigation }) {
                 <Text style={styles.title}>Create Character</Text>
 
                 {error && <Text style={styles.error}>{error}</Text>}
+                {maps.some((map) => map?.RosterLocked) ? (
+                    <Text style={styles.warning}>Roster-locked maps are disabled for character creation.</Text>
+                ) : null}
 
                 <Text style={styles.label}>Character Name (optional)</Text>
                 <TextInput
@@ -164,19 +168,27 @@ export default function CreateCharacterScreen({ navigation }) {
                             key={map.MapId}
                             style={[
                                 styles.optionButton,
+                                map.RosterLocked && styles.optionButtonLocked,
                                 selectedMapId === map.MapId && styles.optionButtonActive,
                             ]}
-                            onPress={() => setSelectedMapId(map.MapId)}
+                            onPress={() => {
+                                if (!map.RosterLocked) {
+                                    setSelectedMapId(map.MapId);
+                                }
+                            }}
+                            disabled={Boolean(map.RosterLocked)}
                         >
                             <Text
                                 style={[
                                     styles.optionText,
+                                    map.RosterLocked && styles.optionTextLocked,
                                     selectedMapId === map.MapId && styles.optionTextActive,
                                 ]}
                                 numberOfLines={1}
                             >
                                 {map.Name || map.MapId}
                             </Text>
+                            {map.RosterLocked ? <Text style={styles.optionLockedBadge}>Roster Locked</Text> : null}
                         </Pressable>
                     ))}
                 </View>
@@ -283,13 +295,25 @@ const styles = StyleSheet.create({
         borderColor: '#e94560',
         backgroundColor: '#2b1732',
     },
+    optionButtonLocked: {
+        opacity: 0.55,
+    },
     optionText: {
         color: '#e0e0e0',
         fontSize: 14,
         fontWeight: '600',
     },
+    optionTextLocked: {
+        color: '#a4a8bd',
+    },
     optionTextActive: {
         color: '#ffb3c1',
+    },
+    optionLockedBadge: {
+        color: '#f6df87',
+        fontSize: 11,
+        marginTop: 6,
+        fontWeight: '700',
     },
     zoneLoader: {
         marginTop: 4,
@@ -324,6 +348,11 @@ const styles = StyleSheet.create({
     },
     error: {
         color: '#ff667f',
+        marginBottom: 6,
+        textAlign: 'center',
+    },
+    warning: {
+        color: '#f6df87',
         marginBottom: 6,
         textAlign: 'center',
     },

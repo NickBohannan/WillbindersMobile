@@ -48,7 +48,26 @@ async function request(method, path, body = null) {
         }
 
         const text = await response.text();
-        throw new Error(text || `HTTP ${response.status}`);
+        const apiError = new Error(text || `HTTP ${response.status}`);
+
+        if (text) {
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed && typeof parsed === 'object') {
+                    if (typeof parsed.Message === 'string' && parsed.Message.trim()) {
+                        apiError.message = parsed.Message;
+                    }
+
+                    if (typeof parsed.Code === 'string' && parsed.Code.trim()) {
+                        apiError.code = parsed.Code;
+                    }
+                }
+            } catch {
+                // Keep raw text fallback.
+            }
+        }
+
+        throw apiError;
     }
 
     const text = await response.text();
@@ -81,6 +100,9 @@ export const getMyLedTeams = () =>
 export const getAllMaps = () =>
     request('GET', '/api/RealmData/GetAllMapsAsync');
 
+export const getTestMaps = () =>
+    request('GET', '/api/RealmData/GetTestMapsAsync');
+
 export const getZonesByMap = (mapId) =>
     request('GET', `/api/RealmData/GetZonesByMapAsync/${mapId}`);
 
@@ -109,6 +131,15 @@ export const getPendingJoinRequests = () =>
 export const cancelInvite = (inviteId) =>
     request('POST', `/api/RealmData/CancelInvite/${inviteId}`);
 
+export const createMapChallengeInvite = (mapId, inviterTeamId, inviteeTeamId) =>
+    request('POST', '/api/RealmData/CreateMapChallengeInvite', { mapId, inviterTeamId, inviteeTeamId });
+
+export const getPendingMapChallengeInvites = () =>
+    request('GET', '/api/RealmData/GetPendingMapChallengeInvites');
+
+export const respondToMapChallengeInvite = (inviteId, response) =>
+    request('PUT', '/api/RealmData/RespondToMapChallengeInvite', { inviteId, response });
+
 // Characters
 export const createCharacter = (characterName, teamId, currentZone, currentMap) =>
     request('POST', '/api/RealmData/CreateCharacterAsync', { characterName, teamId, currentZone, currentMap });
@@ -118,6 +149,15 @@ export const deleteCharacter = (characterId) =>
 
 export const changeCharacterZone = (characterId, zoneId) =>
     request('PUT', '/api/RealmData/ChangeCharacterZoneAsync', { characterId, zoneId });
+
+export const changeCharacterMap = (characterId, mapId) =>
+    request('PUT', '/api/RealmData/ChangeCharacterMapAsync', { characterId, mapId });
+
+export const validateMapStart = (mapId) =>
+    request('GET', `/api/RealmData/ValidateMapStartAsync/${mapId}`);
+
+export const startMap = (mapId) =>
+    request('POST', '/api/RealmData/StartMapAsync', { mapId });
 
 // Maps
 export const getMap = (mapId) =>
