@@ -14,20 +14,20 @@ import * as api from '../api';
 
 export default function LoginScreen({ navigation }) {
     const { signIn } = useAuth();
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
 
     async function handleLogin() {
-        if (!email || !password) {
-            setError('Email and password are required.');
+        if (!identifier || !password) {
+            setError('Username/email and password are required.');
             return;
         }
         setError(null);
         setLoading(true);
         try {
-            const data = await api.login(email.trim().toLowerCase(), password);
+            const data = await api.login(identifier.trim().toLowerCase(), password);
             await signIn(data);
         } catch (e) {
             setError(e.message || 'Login failed.');
@@ -45,12 +45,11 @@ export default function LoginScreen({ navigation }) {
             {error && <Text style={styles.error}>{error}</Text>}
             <TextInput
                 style={styles.input}
-                placeholder="Email"
+                placeholder="Username or Email"
                 placeholderTextColor="#888"
                 autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={setEmail}
+                value={identifier}
+                onChangeText={setIdentifier}
             />
             <TextInput
                 style={styles.input}

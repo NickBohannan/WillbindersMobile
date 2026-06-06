@@ -75,11 +75,11 @@ async function request(method, path, body = null) {
 }
 
 // Auth
-export const login = (email, password) =>
-    request('POST', '/api/Auth/login', { email, password });
+export const login = (identifier, password) =>
+    request('POST', '/api/Auth/login', { identifier, password });
 
-export const register = (firstName, lastName, email, password) =>
-    request('POST', '/api/Auth/register', { firstName, lastName, email, password });
+export const register = (firstName, lastName, username, email, password) =>
+    request('POST', '/api/Auth/register', { firstName, lastName, username, email, password });
 
 // Characters
 export const getCharactersByUserId = (userId) =>
@@ -110,11 +110,11 @@ export const createTeam = (name) =>
     request('POST', '/api/RealmData/CreateTeamAsync', { name });
 
 // Team invitations and join requests
-export const inviteAccountToTeam = (teamId, accountId) =>
-    request('POST', '/api/RealmData/InviteAccountToTeam', { teamId, accountId });
+export const inviteAccountToTeam = (teamId, accountIdentifier) =>
+    request('POST', '/api/RealmData/InviteAccountToTeam', { teamId, accountIdentifier });
 
-export const requestToJoinTeam = (teamLeaderId) =>
-    request('POST', '/api/RealmData/RequestToJoinTeam', { teamLeaderId });
+export const requestToJoinTeam = (teamLeaderIdentifier) =>
+    request('POST', '/api/RealmData/RequestToJoinTeam', { teamLeaderIdentifier });
 
 export const respondToInvite = (inviteId, response) =>
     request('PUT', '/api/RealmData/RespondToInvite', { inviteId, response });

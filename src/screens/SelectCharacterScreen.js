@@ -165,10 +165,6 @@ export default function SelectCharacterScreen({ navigation, route }) {
                             <Text style={styles.value}>{item.Power}</Text>
                         </View>
                         <View style={styles.row}>
-                            <Text style={styles.label}>Experience</Text>
-                            <Text style={styles.value}>{item.Experience}</Text>
-                        </View>
-                        <View style={styles.row}>
                             <Text style={styles.label}>Zone</Text>
                             <Text style={styles.value} numberOfLines={1} ellipsizeMode="middle">{item.CurrentZone}</Text>
                         </View>

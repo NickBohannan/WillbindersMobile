@@ -32,7 +32,11 @@ export default function SelectMapScreen({ route, navigation }) {
                 setMaps(nextMaps);
                 setError(null);
                 if (nextMaps.length > 0) {
-                    setSelectedMapId(nextMaps[0].MapId);
+                    const currentMapId = character?.CurrentMap;
+                    const preferredMap = currentMapId
+                        ? nextMaps.find((map) => map.MapId === currentMapId)
+                        : null;
+                    setSelectedMapId(preferredMap?.MapId ?? nextMaps[0].MapId);
                 }
             } catch (e) {
                 if (!active) return;
@@ -52,9 +56,18 @@ export default function SelectMapScreen({ route, navigation }) {
 
     const selectedMap = useMemo(() => maps.find((m) => m.MapId === selectedMapId) || null, [maps, selectedMapId]);
     const selectedMapLocked = Boolean(selectedMap?.RosterLocked);
+    const selectedMapIsCurrentCharacterMap = Boolean(character?.CurrentMap && selectedMapId === character.CurrentMap);
 
     async function handleStart() {
-        if (!character?.CharacterId || !selectedMapId || starting || selectedMapLocked) {
+        if (!character?.CharacterId || !selectedMapId || starting || (selectedMapLocked && !selectedMapIsCurrentCharacterMap)) {
+            return;
+        }
+
+        if (selectedMapIsCurrentCharacterMap) {
+            navigation.navigate('CharacterMap', {
+                character,
+                mapId: selectedMapId,
+            });
             return;
         }
 
@@ -117,7 +130,9 @@ export default function SelectMapScreen({ route, navigation }) {
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
             {validationMessage ? <Text style={styles.warning}>{validationMessage}</Text> : null}
-            {selectedMapLocked ? <Text style={styles.warning}>Selected map is roster-locked and cannot accept new entries.</Text> : null}
+            {selectedMapLocked && !selectedMapIsCurrentCharacterMap ? (
+                <Text style={styles.warning}>Selected map is roster-locked and cannot accept new entries.</Text>
+            ) : null}
 
             {!error && maps.length === 0 ? <Text style={styles.empty}>No test maps are available.</Text> : null}
 
@@ -141,9 +156,12 @@ export default function SelectMapScreen({ route, navigation }) {
             />
 
             <Pressable
-                style={[styles.button, (!selectedMap || starting || selectedMapLocked) ? styles.buttonDisabled : null]}
+                style={[
+                    styles.button,
+                    (!selectedMap || starting || (selectedMapLocked && !selectedMapIsCurrentCharacterMap)) ? styles.buttonDisabled : null,
+                ]}
                 onPress={handleStart}
-                disabled={!selectedMap || starting || selectedMapLocked}
+                disabled={!selectedMap || starting || (selectedMapLocked && !selectedMapIsCurrentCharacterMap)}
             >
                 <Text style={styles.buttonText}>{starting ? 'Starting...' : 'Start Map'}</Text>
             </Pressable>

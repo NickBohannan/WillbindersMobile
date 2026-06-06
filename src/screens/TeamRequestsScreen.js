@@ -16,7 +16,7 @@ export default function TeamRequestsScreen({ navigation }) {
     const [requests, setRequests] = useState([]);
     const [myTeams, setMyTeams] = useState([]);
     const [selectedTeamId, setSelectedTeamId] = useState('');
-    const [inviteAccountId, setInviteAccountId] = useState('');
+    const [inviteAccountIdentifier, setInviteAccountIdentifier] = useState('');
     const [inviteBusy, setInviteBusy] = useState(false);
     const [loading, setLoading] = useState(true);
     const [busyRequestId, setBusyRequestId] = useState(null);
@@ -82,14 +82,14 @@ export default function TeamRequestsScreen({ navigation }) {
     }
 
     async function handleInvite() {
-        const accountId = inviteAccountId.trim();
+        const accountIdentifier = inviteAccountIdentifier.trim();
         if (!selectedTeamId) {
             setError('Select a team first.');
             return;
         }
 
-        if (!accountId) {
-            setError('Account ID is required to send an invite.');
+        if (!accountIdentifier) {
+            setError('Username or email is required to send an invite.');
             return;
         }
 
@@ -97,9 +97,9 @@ export default function TeamRequestsScreen({ navigation }) {
         setError(null);
         setMessage(null);
         try {
-            const response = await api.inviteAccountToTeam(selectedTeamId, accountId);
-            setMessage(`Invite sent to ${response?.AccountName || accountId}.`);
-            setInviteAccountId('');
+            const response = await api.inviteAccountToTeam(selectedTeamId, accountIdentifier);
+            setMessage(`Invite sent to ${response?.AccountName || accountIdentifier}.`);
+            setInviteAccountIdentifier('');
         } catch (e) {
             setError(e.message || 'Failed to send invite.');
         } finally {
@@ -149,9 +149,9 @@ export default function TeamRequestsScreen({ navigation }) {
             <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Invite Account To Selected Team</Text>
                 <TextInput
-                    value={inviteAccountId}
-                    onChangeText={setInviteAccountId}
-                    placeholder="Account ID to invite"
+                    value={inviteAccountIdentifier}
+                    onChangeText={setInviteAccountIdentifier}
+                    placeholder="Username or email to invite"
                     placeholderTextColor="#6f7390"
                     style={styles.input}
                     editable={!inviteBusy}
@@ -164,6 +164,13 @@ export default function TeamRequestsScreen({ navigation }) {
                     disabled={inviteBusy || !selectedTeamId}
                 >
                     {inviteBusy ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.buttonText}>Send Invite</Text>}
+                </Pressable>
+                <Pressable
+                    style={[styles.secondaryButton, !selectedTeamId && styles.disabledButton]}
+                    onPress={() => navigation.navigate('CreateCharacter', { initialTeamId: selectedTeamId })}
+                    disabled={!selectedTeamId}
+                >
+                    <Text style={styles.buttonText}>Create Character For Selected Team</Text>
                 </Pressable>
             </View>
 

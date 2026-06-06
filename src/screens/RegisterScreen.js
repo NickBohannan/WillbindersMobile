@@ -15,6 +15,7 @@ import * as api from '../api';
 export default function RegisterScreen({ navigation }) {
     const [firstName, setFirstName] = useState('');
     const [lastName, setLastName] = useState('');
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
@@ -22,7 +23,7 @@ export default function RegisterScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
 
     async function handleRegister() {
-        if (!firstName || !lastName || !email || !password) {
+        if (!firstName || !lastName || !username || !email || !password) {
             setError('All fields are required.');
             return;
         }
@@ -30,7 +31,13 @@ export default function RegisterScreen({ navigation }) {
         setSuccess(null);
         setLoading(true);
         try {
-            const data = await api.register(firstName.trim(), lastName.trim(), email.trim().toLowerCase(), password);
+            const data = await api.register(
+                firstName.trim(),
+                lastName.trim(),
+                username.trim().toLowerCase(),
+                email.trim().toLowerCase(),
+                password
+            );
             setSuccess(data?.message ?? 'Registration successful. Check your email to verify your account.');
         } catch (e) {
             setError(e.message || 'Registration failed.');
@@ -52,6 +59,9 @@ export default function RegisterScreen({ navigation }) {
                     value={firstName} onChangeText={setFirstName} />
                 <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor="#888"
                     value={lastName} onChangeText={setLastName} />
+                <TextInput style={styles.input} placeholder="Username" placeholderTextColor="#888"
+                    autoCapitalize="none" autoCorrect={false}
+                    value={username} onChangeText={setUsername} />
                 <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#888"
                     autoCapitalize="none" keyboardType="email-address"
                     value={email} onChangeText={setEmail} />

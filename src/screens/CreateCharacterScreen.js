@@ -11,16 +11,15 @@ import {
 } from 'react-native';
 import * as api from '../api';
 
-export default function CreateCharacterScreen({ navigation }) {
+export default function CreateCharacterScreen({ navigation, route }) {
+    const initialTeamId = route?.params?.initialTeamId ?? '';
     const [characterName, setCharacterName] = useState('');
     const [teams, setTeams] = useState([]);
     const [maps, setMaps] = useState([]);
     const [zones, setZones] = useState([]);
-
     const [selectedTeamId, setSelectedTeamId] = useState('');
     const [selectedMapId, setSelectedMapId] = useState('');
     const [selectedZoneId, setSelectedZoneId] = useState('');
-
     const [loading, setLoading] = useState(true);
     const [loadingZones, setLoadingZones] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -29,10 +28,7 @@ export default function CreateCharacterScreen({ navigation }) {
     useEffect(() => {
         async function loadInitialData() {
             try {
-                const [teamData, mapData] = await Promise.all([
-                    api.getAllTeams(),
-                    api.getAllMaps(),
-                ]);
+                const [teamData, mapData] = await Promise.all([api.getAllTeams(), api.getAllMaps()]);
 
                 const loadedTeams = Array.isArray(teamData) ? teamData : [];
                 const loadedMaps = Array.isArray(mapData) ? mapData : [];
@@ -42,7 +38,10 @@ export default function CreateCharacterScreen({ navigation }) {
                 setMaps(loadedMaps);
 
                 if (loadedTeams.length > 0) {
-                    setSelectedTeamId(loadedTeams[0].Id);
+                    const preferredTeam = initialTeamId
+                        ? loadedTeams.find((team) => team.Id === initialTeamId)
+                        : null;
+                    setSelectedTeamId(preferredTeam?.Id ?? loadedTeams[0].Id);
                 }
 
                 if (loadedMaps.length > 0) {
@@ -56,7 +55,7 @@ export default function CreateCharacterScreen({ navigation }) {
         }
 
         loadInitialData();
-    }, []);
+    }, [initialTeamId]);
 
     useEffect(() => {
         async function loadZones() {
@@ -95,12 +94,7 @@ export default function CreateCharacterScreen({ navigation }) {
         setError(null);
 
         try {
-            await api.createCharacter(
-                characterName.trim(),
-                selectedTeamId,
-                selectedZoneId,
-                selectedMapId
-            );
+            await api.createCharacter(characterName.trim(), selectedTeamId, selectedZoneId, selectedMapId);
             navigation.navigate('SelectCharacter', { refreshKey: Date.now() });
         } catch (e) {
             setError(e.message || 'Failed to create character.');
@@ -142,17 +136,11 @@ export default function CreateCharacterScreen({ navigation }) {
                     {teams.map((team) => (
                         <Pressable
                             key={team.Id}
-                            style={[
-                                styles.optionButton,
-                                selectedTeamId === team.Id && styles.optionButtonActive,
-                            ]}
+                            style={[styles.optionButton, selectedTeamId === team.Id && styles.optionButtonActive]}
                             onPress={() => setSelectedTeamId(team.Id)}
                         >
                             <Text
-                                style={[
-                                    styles.optionText,
-                                    selectedTeamId === team.Id && styles.optionTextActive,
-                                ]}
+                                style={[styles.optionText, selectedTeamId === team.Id && styles.optionTextActive]}
                                 numberOfLines={1}
                             >
                                 {team.Name || team.Id}
@@ -201,17 +189,11 @@ export default function CreateCharacterScreen({ navigation }) {
                         {zones.map((zone) => (
                             <Pressable
                                 key={zone.Id}
-                                style={[
-                                    styles.optionButton,
-                                    selectedZoneId === zone.Id && styles.optionButtonActive,
-                                ]}
+                                style={[styles.optionButton, selectedZoneId === zone.Id && styles.optionButtonActive]}
                                 onPress={() => setSelectedZoneId(zone.Id)}
                             >
                                 <Text
-                                    style={[
-                                        styles.optionText,
-                                        selectedZoneId === zone.Id && styles.optionTextActive,
-                                    ]}
+                                    style={[styles.optionText, selectedZoneId === zone.Id && styles.optionTextActive]}
                                     numberOfLines={1}
                                 >
                                     {zone.Name || zone.Id}
@@ -239,33 +221,11 @@ export default function CreateCharacterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#1a1a2e',
-    },
-    centered: {
-        flex: 1,
-        backgroundColor: '#1a1a2e',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    content: {
-        padding: 16,
-        paddingBottom: 32,
-    },
-    title: {
-        color: '#e0e0e0',
-        fontSize: 28,
-        fontWeight: '700',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    label: {
-        color: '#a0a0c0',
-        fontSize: 14,
-        marginBottom: 8,
-        marginTop: 10,
-    },
+    container: { flex: 1, backgroundColor: '#1a1a2e' },
+    centered: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
+    content: { padding: 16, paddingBottom: 32 },
+    title: { color: '#e0e0e0', fontSize: 28, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
+    label: { color: '#a0a0c0', fontSize: 14, marginBottom: 8, marginTop: 10 },
     input: {
         backgroundColor: '#16213e',
         borderRadius: 8,
@@ -276,84 +236,28 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         fontSize: 15,
     },
-    optionGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
+    optionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     optionButton: {
+        minWidth: '47%',
         backgroundColor: '#16213e',
-        borderRadius: 8,
         borderWidth: 1,
         borderColor: '#0f3460',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        marginBottom: 6,
-        minWidth: '48%',
-    },
-    optionButtonActive: {
-        borderColor: '#e94560',
-        backgroundColor: '#2b1732',
-    },
-    optionButtonLocked: {
-        opacity: 0.55,
-    },
-    optionText: {
-        color: '#e0e0e0',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    optionTextLocked: {
-        color: '#a4a8bd',
-    },
-    optionTextActive: {
-        color: '#ffb3c1',
-    },
-    optionLockedBadge: {
-        color: '#f6df87',
-        fontSize: 11,
-        marginTop: 6,
-        fontWeight: '700',
-    },
-    zoneLoader: {
-        marginTop: 4,
-        marginBottom: 8,
-    },
-    buttonRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 18,
-    },
-    actionButton: {
-        flex: 1,
         borderRadius: 8,
-        paddingVertical: 12,
-        alignItems: 'center',
+        padding: 10,
     },
-    cancelButton: {
-        backgroundColor: '#0f3460',
-        marginRight: 8,
-    },
-    submitButton: {
-        backgroundColor: '#e94560',
-        marginLeft: 8,
-    },
-    buttonDisabled: {
-        opacity: 0.6,
-    },
-    actionButtonText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 15,
-    },
-    error: {
-        color: '#ff667f',
-        marginBottom: 6,
-        textAlign: 'center',
-    },
-    warning: {
-        color: '#f6df87',
-        marginBottom: 6,
-        textAlign: 'center',
-    },
+    optionButtonActive: { borderColor: '#e94560', backgroundColor: '#213051' },
+    optionButtonLocked: { opacity: 0.55 },
+    optionText: { color: '#e0e0e0', fontWeight: '600' },
+    optionTextActive: { color: '#fff' },
+    optionTextLocked: { color: '#f6df87' },
+    optionLockedBadge: { color: '#f6df87', fontSize: 11, marginTop: 4, fontWeight: '700' },
+    zoneLoader: { marginTop: 6 },
+    buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
+    actionButton: { flex: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
+    cancelButton: { backgroundColor: '#0f3460', marginRight: 8 },
+    submitButton: { backgroundColor: '#e94560', marginLeft: 8 },
+    buttonDisabled: { opacity: 0.6 },
+    actionButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+    error: { color: '#ff667f', marginBottom: 6, textAlign: 'center' },
+    warning: { color: '#f6df87', marginBottom: 8, textAlign: 'center' },
 });

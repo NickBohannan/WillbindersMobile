@@ -50,6 +50,12 @@ export default function CreateTeamScreen({ navigation }) {
                         <Text style={styles.successText}>Name: {createdTeam.Name}</Text>
                         <Text style={styles.successText}>Team ID: {createdTeam.TeamId}</Text>
                         <Text style={styles.successHint}>You are now a team leader for this team.</Text>
+                        <Pressable
+                            style={styles.successAction}
+                            onPress={() => navigation.navigate('CreateCharacter', { initialTeamId: createdTeam.TeamId })}
+                        >
+                            <Text style={styles.successActionText}>Create Character for This Team</Text>
+                        </Pressable>
                     </View>
                 )}
 
@@ -171,5 +177,17 @@ const styles = StyleSheet.create({
         color: '#a0a0c0',
         fontSize: 12,
         marginTop: 6,
+    },
+    successAction: {
+        marginTop: 10,
+        backgroundColor: '#e94560',
+        borderRadius: 8,
+        paddingVertical: 10,
+        alignItems: 'center',
+    },
+    successActionText: {
+        color: '#fff',
+        fontWeight: '700',
+        fontSize: 14,
     },
 });

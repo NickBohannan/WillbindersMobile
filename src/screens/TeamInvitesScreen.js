@@ -17,7 +17,7 @@ export default function TeamInvitesScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
     const [busyInviteId, setBusyInviteId] = useState(null);
     const [error, setError] = useState(null);
-    const [leaderAccountId, setLeaderAccountId] = useState('');
+    const [leaderIdentifier, setLeaderIdentifier] = useState('');
     const [requesting, setRequesting] = useState(false);
     const [requestMessage, setRequestMessage] = useState(null);
 
@@ -54,9 +54,9 @@ export default function TeamInvitesScreen({ navigation }) {
     }
 
     async function handleRequestToJoin() {
-        const trimmedLeaderId = leaderAccountId.trim();
-        if (!trimmedLeaderId) {
-            setError('Team leader account ID is required to request team membership.');
+        const trimmedLeaderIdentifier = leaderIdentifier.trim();
+        if (!trimmedLeaderIdentifier) {
+            setError('Team leader username or email is required to request team membership.');
             return;
         }
 
@@ -65,11 +65,11 @@ export default function TeamInvitesScreen({ navigation }) {
         setRequestMessage(null);
 
         try {
-            const response = await api.requestToJoinTeam(trimmedLeaderId);
+            const response = await api.requestToJoinTeam(trimmedLeaderIdentifier);
             setRequestMessage(
-                `Request sent to ${response?.LeaderName || 'leader'} (${response?.LeaderId || trimmedLeaderId}).`
+                `Request sent to ${response?.LeaderName || 'leader'} (${response?.LeaderId || trimmedLeaderIdentifier}).`
             );
-            setLeaderAccountId('');
+            setLeaderIdentifier('');
         } catch (e) {
             setError(e.message || 'Failed to send join request.');
         } finally {
@@ -91,11 +91,11 @@ export default function TeamInvitesScreen({ navigation }) {
 
             <View style={styles.requestCard}>
                 <Text style={styles.sectionTitle}>Request Team Membership</Text>
-                <Text style={styles.helperText}>Enter a team leader account ID to request an invite.</Text>
+                <Text style={styles.helperText}>Enter a team leader username or email to request an invite.</Text>
                 <TextInput
-                    value={leaderAccountId}
-                    onChangeText={setLeaderAccountId}
-                    placeholder="Team Leader Account ID"
+                    value={leaderIdentifier}
+                    onChangeText={setLeaderIdentifier}
+                    placeholder="Team Leader Username or Email"
                     placeholderTextColor="#6f7390"
                     style={styles.input}
                     editable={!requesting}
