@@ -9,13 +9,18 @@ import {
     SafeAreaView,
     Modal,
     ScrollView,
+    ImageBackground,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function SelectCharacterScreen({ navigation, route }) {
     const { userId } = useAuth();
+    const [fontsLoaded] = useAlagardFont();
     const [characters, setCharacters] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -119,6 +124,10 @@ export default function SelectCharacterScreen({ navigation, route }) {
         setHallVisible(false);
     }
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -128,7 +137,8 @@ export default function SelectCharacterScreen({ navigation, route }) {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <SafeAreaView style={styles.container}>
             <Text style={styles.title}>Your Characters</Text>
             <View style={styles.actionsRow}>
                 <Pressable style={styles.hallButton} onPress={openHallOfLegends}>
@@ -150,9 +160,6 @@ export default function SelectCharacterScreen({ navigation, route }) {
                     <View style={styles.card}>
                         <Text style={styles.cardName} numberOfLines={1} ellipsizeMode="tail">
                             {item.CharacterName || 'Unnamed Character'}
-                        </Text>
-                        <Text style={styles.cardId} numberOfLines={1} ellipsizeMode="middle">
-                            ID: {item.CharacterId}
                         </Text>
                         <View style={styles.row}>
                             <Text style={styles.label}>Team</Text>
@@ -220,20 +227,23 @@ export default function SelectCharacterScreen({ navigation, route }) {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#1a1a2e' },
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
+    container: { flex: 1, backgroundColor: 'transparent' },
     centered: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
     title: {
         fontSize: 24,
-        fontWeight: 'bold',
         color: '#e0e0e0',
         textAlign: 'center',
         paddingTop: 24,
         paddingBottom: 12,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     actionsRow: {
         paddingHorizontal: 16,
@@ -249,7 +259,7 @@ const styles = StyleSheet.create({
     },
     hallButtonText: {
         color: '#f6df87',
-        fontWeight: '700',
+        fontFamily: MODULE_FONT_FAMILY,
     },
     list: { padding: 16 },
     card: {
@@ -260,21 +270,21 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#0f3460',
     },
-    cardName: { color: '#e0e0e0', fontSize: 16, fontWeight: '700', marginBottom: 6 },
-    cardId: { color: '#a0a0c0', fontSize: 12, marginBottom: 8 },
+    cardName: { color: '#e0e0e0', fontSize: 16, marginBottom: 6, fontFamily: MODULE_FONT_FAMILY },
+    cardId: { color: '#a0a0c0', fontSize: 12, marginBottom: 8, fontFamily: MODULE_FONT_FAMILY },
     row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-    label: { color: '#a0a0c0', fontSize: 14 },
-    value: { color: '#e0e0e0', fontSize: 14, flexShrink: 1, marginLeft: 8, textAlign: 'right' },
+    label: { color: '#a0a0c0', fontSize: 14, fontFamily: MODULE_FONT_FAMILY },
+    value: { color: '#e0e0e0', fontSize: 14, flexShrink: 1, marginLeft: 8, textAlign: 'right', fontFamily: MODULE_FONT_FAMILY },
     button: {
-        backgroundColor: '#e94560',
+        backgroundColor: '#25cc25',
         borderRadius: 8,
         padding: 10,
         alignItems: 'center',
         marginTop: 12,
     },
-    buttonText: { color: '#fff', fontWeight: 'bold' },
-    error: { color: '#e94560', textAlign: 'center', padding: 16 },
-    empty: { color: '#a0a0c0', textAlign: 'center', padding: 16 },
+    buttonText: { color: '#fff', fontSize: 20, fontFamily: MODULE_FONT_FAMILY },
+    error: { color: '#e94560', textAlign: 'center', padding: 16, fontFamily: MODULE_FONT_FAMILY },
+    empty: { color: '#a0a0c0', textAlign: 'center', padding: 16, fontFamily: MODULE_FONT_FAMILY },
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
@@ -298,7 +308,7 @@ const styles = StyleSheet.create({
     modalTitle: {
         color: '#f0f0f8',
         fontSize: 20,
-        fontWeight: '700',
+        fontFamily: MODULE_FONT_FAMILY,
     },
     modalCloseButton: {
         paddingVertical: 6,
@@ -309,7 +319,7 @@ const styles = StyleSheet.create({
     },
     modalCloseText: {
         color: '#d9e4ff',
-        fontWeight: '700',
+        fontFamily: MODULE_FONT_FAMILY,
     },
     modalLoading: {
         marginVertical: 20,
@@ -327,11 +337,8 @@ const styles = StyleSheet.create({
     },
     modalItemTitle: {
         color: '#f0f0f8',
-        fontWeight: '700',
         marginBottom: 4,
+        fontFamily: MODULE_FONT_FAMILY,
     },
-    modalItemLine: {
-        color: '#c3d3f3',
-        marginBottom: 2,
-    },
+    modalItemLine: { color: '#c3d3f3', marginBottom: 2, fontFamily: MODULE_FONT_FAMILY },
 });

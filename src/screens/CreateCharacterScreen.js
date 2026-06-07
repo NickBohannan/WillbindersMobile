@@ -8,11 +8,16 @@ import {
     Pressable,
     StyleSheet,
     ActivityIndicator,
+    ImageBackground,
 } from 'react-native';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function CreateCharacterScreen({ navigation, route }) {
     const initialTeamId = route?.params?.initialTeamId ?? '';
+    const [fontsLoaded] = useAlagardFont();
     const [characterName, setCharacterName] = useState('');
     const [teams, setTeams] = useState([]);
     const [maps, setMaps] = useState([]);
@@ -103,6 +108,10 @@ export default function CreateCharacterScreen({ navigation, route }) {
         }
     }
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -112,8 +121,9 @@ export default function CreateCharacterScreen({ navigation, route }) {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.content}>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <SafeAreaView style={styles.container}>
+                <ScrollView contentContainerStyle={styles.content}>
                 <Text style={styles.title}>Create Character</Text>
 
                 {error && <Text style={styles.error}>{error}</Text>}
@@ -215,17 +225,20 @@ export default function CreateCharacterScreen({ navigation, route }) {
                         <Text style={styles.actionButtonText}>{submitting ? 'Creating...' : 'Create'}</Text>
                     </Pressable>
                 </View>
-            </ScrollView>
-        </SafeAreaView>
+                </ScrollView>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#1a1a2e' },
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
+    container: { flex: 1, backgroundColor: 'transparent' },
     centered: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
     content: { padding: 16, paddingBottom: 32 },
-    title: { color: '#e0e0e0', fontSize: 28, fontWeight: '700', marginBottom: 16, textAlign: 'center' },
-    label: { color: '#a0a0c0', fontSize: 14, marginBottom: 8, marginTop: 10 },
+    title: { color: '#e0e0e0', fontSize: 28, marginBottom: 16, textAlign: 'center', fontFamily: MODULE_FONT_FAMILY },
+    label: { color: '#a0a0c0', fontSize: 14, marginBottom: 8, marginTop: 10, fontFamily: MODULE_FONT_FAMILY },
     input: {
         backgroundColor: '#16213e',
         borderRadius: 8,
@@ -247,17 +260,17 @@ const styles = StyleSheet.create({
     },
     optionButtonActive: { borderColor: '#e94560', backgroundColor: '#213051' },
     optionButtonLocked: { opacity: 0.55 },
-    optionText: { color: '#e0e0e0', fontWeight: '600' },
-    optionTextActive: { color: '#fff' },
-    optionTextLocked: { color: '#f6df87' },
-    optionLockedBadge: { color: '#f6df87', fontSize: 11, marginTop: 4, fontWeight: '700' },
+    optionText: { color: '#e0e0e0', fontFamily: MODULE_FONT_FAMILY },
+    optionTextActive: { color: '#fff', fontFamily: MODULE_FONT_FAMILY },
+    optionTextLocked: { color: '#f6df87', fontFamily: MODULE_FONT_FAMILY },
+    optionLockedBadge: { color: '#f6df87', fontSize: 11, marginTop: 4, fontFamily: MODULE_FONT_FAMILY },
     zoneLoader: { marginTop: 6 },
     buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
     actionButton: { flex: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },
     cancelButton: { backgroundColor: '#0f3460', marginRight: 8 },
     submitButton: { backgroundColor: '#e94560', marginLeft: 8 },
     buttonDisabled: { opacity: 0.6 },
-    actionButtonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-    error: { color: '#ff667f', marginBottom: 6, textAlign: 'center' },
-    warning: { color: '#f6df87', marginBottom: 8, textAlign: 'center' },
+    actionButtonText: { color: '#fff', fontSize: 15, fontFamily: MODULE_FONT_FAMILY },
+    error: { color: '#ff667f', marginBottom: 6, textAlign: 'center', fontFamily: MODULE_FONT_FAMILY },
+    warning: { color: '#f6df87', marginBottom: 8, textAlign: 'center', fontFamily: MODULE_FONT_FAMILY },
 });

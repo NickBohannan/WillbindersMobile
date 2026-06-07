@@ -8,12 +8,17 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
+    ImageBackground,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background.png');
 
 export default function LoginScreen({ navigation }) {
     const { signIn } = useAuth();
+    const [fontsLoaded] = useAlagardFont();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState(null);
@@ -36,59 +41,71 @@ export default function LoginScreen({ navigation }) {
         }
     }
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-            <Text style={styles.title}>Willbinders</Text>
-            {error && <Text style={styles.error}>{error}</Text>}
-            <TextInput
-                style={styles.input}
-                placeholder="Username or Email"
-                placeholderTextColor="#888"
-                autoCapitalize="none"
-                value={identifier}
-                onChangeText={setIdentifier}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#888"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-            />
-            <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
-                {loading
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.buttonText}>Log In</Text>
-                }
-            </Pressable>
-            <Pressable onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.link}>Don't have an account? Register</Text>
-            </Pressable>
-        </KeyboardAvoidingView>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <KeyboardAvoidingView
+                style={styles.container}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <Text style={styles.title}>Willbinders</Text>
+                {error && <Text style={styles.error}>{error}</Text>}
+                <TextInput
+                    style={styles.input}
+                    placeholder="Username or Email"
+                    placeholderTextColor="#ffffff"
+                    autoCapitalize="none"
+                    value={identifier}
+                    onChangeText={setIdentifier}
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor="#ffffff"
+                    secureTextEntry
+                    value={password}
+                    onChangeText={setPassword}
+                />
+                <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
+                    {loading
+                        ? <ActivityIndicator color="#fff" />
+                        : <Text style={styles.buttonText}>Log In</Text>
+                    }
+                </Pressable>
+                <Pressable onPress={() => navigation.navigate('Register')}>
+                    <Text style={styles.link}>Don't have an account? Register</Text>
+                </Pressable>
+            </KeyboardAvoidingView>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        backgroundColor: 'transparent',
         justifyContent: 'center',
         padding: 24,
     },
     title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#e0e0e0',
+        fontSize: 60,
+        color: '#ffffff',
         textAlign: 'center',
-        marginBottom: 32,
+        marginBottom: 220,
+        fontFamily: MODULE_FONT_FAMILY,
+        textShadowColor: '#000',
+        textShadowOffset: { width: 3, height: 3 },
+        textShadowRadius: 4,
     },
     input: {
-        backgroundColor: '#16213e',
-        color: '#e0e0e0',
+        backgroundColor: '#1c55a8'  ,
+        color: '#ffffff',
+        fontFamily: MODULE_FONT_FAMILY,
         borderRadius: 8,
         padding: 14,
         marginBottom: 12,
@@ -97,7 +114,7 @@ const styles = StyleSheet.create({
         borderColor: '#0f3460',
     },
     button: {
-        backgroundColor: '#e94560',
+        backgroundColor: '#25cc25',
         borderRadius: 8,
         padding: 16,
         alignItems: 'center',
@@ -106,17 +123,19 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 16,
+        fontSize: 26,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     error: {
         color: '#e94560',
         marginBottom: 12,
         textAlign: 'center',
+        fontFamily: MODULE_FONT_FAMILY,
     },
     link: {
-        color: '#a0a0c0',
+        color: '#ffffff',
         textAlign: 'center',
         marginTop: 8,
+        fontFamily: MODULE_FONT_FAMILY,
     },
 });

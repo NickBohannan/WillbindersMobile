@@ -199,7 +199,6 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 22,
-        fontWeight: 'bold',
         color: '#e0e0e0',
         marginBottom: 12,
         textAlign: 'center',
@@ -213,7 +212,6 @@ const styles = StyleSheet.create({
     },
     highlight: {
         color: '#e94560',
-        fontWeight: 'bold',
     },
     button: {
         backgroundColor: '#e94560',
@@ -223,7 +221,6 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: '#fff',
-        fontWeight: 'bold',
         fontSize: 16,
     },
 });

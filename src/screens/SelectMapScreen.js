@@ -7,11 +7,16 @@ import {
     StyleSheet,
     ActivityIndicator,
     SafeAreaView,
+    ImageBackground,
 } from 'react-native';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function SelectMapScreen({ route, navigation }) {
     const { character } = route.params ?? {};
+    const [fontsLoaded] = useAlagardFont();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -115,6 +120,10 @@ export default function SelectMapScreen({ route, navigation }) {
         }
     }
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -124,7 +133,8 @@ export default function SelectMapScreen({ route, navigation }) {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <SafeAreaView style={styles.container}>
             <Text style={styles.title}>Select Test Map</Text>
             <Text style={styles.subtitle}>Only test maps are available for map start.</Text>
 
@@ -165,7 +175,8 @@ export default function SelectMapScreen({ route, navigation }) {
             >
                 <Text style={styles.buttonText}>{starting ? 'Starting...' : 'Start Map'}</Text>
             </Pressable>
-        </SafeAreaView>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
@@ -187,14 +198,16 @@ function extractErrorMessage(rawMessage) {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#1a1a2e', paddingHorizontal: 16 },
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
+    container: { flex: 1, backgroundColor: 'transparent', paddingHorizontal: 16 },
     centered: { flex: 1, backgroundColor: '#1a1a2e', justifyContent: 'center', alignItems: 'center' },
     title: {
         color: '#e0e0e0',
         fontSize: 24,
-        fontWeight: '700',
         textAlign: 'center',
         paddingTop: 24,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     subtitle: {
         color: '#a0a0c0',
@@ -202,6 +215,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         paddingTop: 8,
         paddingBottom: 12,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     list: {
         paddingTop: 8,
@@ -223,49 +237,21 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         elevation: 4,
     },
-    cardName: {
-        color: '#f2f2f2',
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 4,
-    },
-    cardMeta: {
-        color: '#a0a0c0',
-        fontSize: 12,
-    },
-    cardLocked: {
-        color: '#f6df87',
-        fontSize: 12,
-        marginTop: 6,
-        fontWeight: '700',
-    },
+    cardName: { color: '#f2f2f2', fontSize: 16, marginBottom: 4, fontFamily: MODULE_FONT_FAMILY },
+    cardMeta: { color: '#a0a0c0', fontSize: 12, fontFamily: MODULE_FONT_FAMILY },
+    cardLocked: { color: '#f6df87', fontSize: 12, marginTop: 6, fontFamily: MODULE_FONT_FAMILY },
     button: {
-        backgroundColor: '#e94560',
+        backgroundColor: '#25cc25',
         borderRadius: 10,
         paddingVertical: 14,
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 30,
     },
     buttonDisabled: {
         opacity: 0.55,
     },
-    buttonText: {
-        color: '#ffffff',
-        fontWeight: '700',
-    },
-    error: {
-        color: '#ff7b7b',
-        textAlign: 'center',
-        paddingVertical: 8,
-    },
-    warning: {
-        color: '#f6df87',
-        textAlign: 'center',
-        paddingVertical: 8,
-    },
-    empty: {
-        color: '#a0a0c0',
-        textAlign: 'center',
-        paddingTop: 24,
-    },
+    buttonText: { color: '#ffffff', fontFamily: MODULE_FONT_FAMILY },
+    error: { color: '#ff7b7b', textAlign: 'center', paddingVertical: 8, fontFamily: MODULE_FONT_FAMILY },
+    warning: { color: '#f6df87', textAlign: 'center', paddingVertical: 8, fontFamily: MODULE_FONT_FAMILY },
+    empty: { color: '#a0a0c0', textAlign: 'center', paddingTop: 24, fontFamily: MODULE_FONT_FAMILY },
 });

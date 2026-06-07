@@ -7,10 +7,15 @@ import {
     Pressable,
     StyleSheet,
     ActivityIndicator,
+    ImageBackground,
 } from 'react-native';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function CreateTeamScreen({ navigation }) {
+    const [fontsLoaded] = useAlagardFont();
     const [teamName, setTeamName] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
@@ -37,9 +42,14 @@ export default function CreateTeamScreen({ navigation }) {
         }
     }
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.content}>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.content}>
                 <Text style={styles.title}>Create Team</Text>
 
                 {error && <Text style={styles.error}>{error}</Text>}
@@ -86,15 +96,18 @@ export default function CreateTeamScreen({ navigation }) {
                         )}
                     </Pressable>
                 </View>
-            </View>
-        </SafeAreaView>
+                </View>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        backgroundColor: 'transparent',
     },
     content: {
         padding: 16,
@@ -102,16 +115,11 @@ const styles = StyleSheet.create({
     title: {
         color: '#e0e0e0',
         fontSize: 28,
-        fontWeight: '700',
         marginBottom: 16,
         textAlign: 'center',
+        fontFamily: MODULE_FONT_FAMILY,
     },
-    label: {
-        color: '#a0a0c0',
-        fontSize: 14,
-        marginBottom: 8,
-        marginTop: 10,
-    },
+    label: { color: '#a0a0c0', fontSize: 14, marginBottom: 8, marginTop: 10, fontFamily: MODULE_FONT_FAMILY },
     input: {
         backgroundColor: '#16213e',
         borderRadius: 8,
@@ -144,16 +152,8 @@ const styles = StyleSheet.create({
     disabledButton: {
         opacity: 0.6,
     },
-    actionText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 15,
-    },
-    error: {
-        color: '#ff667f',
-        marginBottom: 6,
-        textAlign: 'center',
-    },
+    actionText: { color: '#fff', fontSize: 15, fontFamily: MODULE_FONT_FAMILY },
+    error: { color: '#ff667f', marginBottom: 6, textAlign: 'center', fontFamily: MODULE_FONT_FAMILY },
     successBox: {
         backgroundColor: '#16213e',
         borderRadius: 8,
@@ -165,18 +165,20 @@ const styles = StyleSheet.create({
     successTitle: {
         color: '#7ce38b',
         fontSize: 16,
-        fontWeight: '700',
         marginBottom: 4,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     successText: {
         color: '#e0e0e0',
         fontSize: 13,
         marginBottom: 2,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     successHint: {
         color: '#a0a0c0',
         fontSize: 12,
         marginTop: 6,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     successAction: {
         marginTop: 10,
@@ -185,9 +187,5 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         alignItems: 'center',
     },
-    successActionText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 14,
-    },
+    successActionText: { color: '#fff', fontSize: 14, fontFamily: MODULE_FONT_FAMILY },
 });

@@ -7,11 +7,16 @@ import {
     Pressable,
     StyleSheet,
     ActivityIndicator,
+    ImageBackground,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function MyTeamsScreen({ navigation }) {
+    const [fontsLoaded] = useAlagardFont();
     const [teams, setTeams] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -35,6 +40,10 @@ export default function MyTeamsScreen({ navigation }) {
         }, [loadTeams])
     );
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     if (loading) {
         return (
             <View style={styles.centered}>
@@ -44,7 +53,8 @@ export default function MyTeamsScreen({ navigation }) {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <SafeAreaView style={styles.container}>
             <Text style={styles.title}>My Teams</Text>
 
             {error && <Text style={styles.error}>{error}</Text>}
@@ -84,14 +94,17 @@ export default function MyTeamsScreen({ navigation }) {
                     </View>
                 }
             />
-        </SafeAreaView>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
 const styles = StyleSheet.create({
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        backgroundColor: 'transparent',
     },
     centered: {
         flex: 1,
@@ -101,11 +114,11 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 24,
-        fontWeight: 'bold',
         color: '#e0e0e0',
         textAlign: 'center',
         paddingTop: 24,
         paddingBottom: 12,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     list: {
         padding: 16,
@@ -119,27 +132,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#0f3460',
     },
-    cardName: {
-        color: '#e0e0e0',
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 6,
-    },
-    cardId: {
-        color: '#a0a0c0',
-        fontSize: 12,
-    },
-    error: {
-        color: '#e94560',
-        textAlign: 'center',
-        paddingHorizontal: 16,
-        paddingBottom: 8,
-    },
-    empty: {
-        color: '#a0a0c0',
-        textAlign: 'center',
-        padding: 16,
-    },
+    cardName: { color: '#e0e0e0', fontSize: 16, marginBottom: 6, fontFamily: MODULE_FONT_FAMILY },
+    cardId: { color: '#a0a0c0', fontSize: 12, fontFamily: MODULE_FONT_FAMILY },
+    error: { color: '#e94560', textAlign: 'center', paddingHorizontal: 16, paddingBottom: 8, fontFamily: MODULE_FONT_FAMILY },
+    empty: { color: '#a0a0c0', textAlign: 'center', padding: 16, fontFamily: MODULE_FONT_FAMILY },
     backButton: {
         backgroundColor: '#0f3460',
         borderRadius: 8,
@@ -154,9 +150,5 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 8,
     },
-    backButtonText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 15,
-    },
+    backButtonText: { color: '#fff', fontSize: 15, fontFamily: MODULE_FONT_FAMILY },
 });

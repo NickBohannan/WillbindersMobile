@@ -7,11 +7,16 @@ import {
     Pressable,
     StyleSheet,
     ActivityIndicator,
+    ImageBackground,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../api';
+import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
+
+const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function MapChallengeScreen({ navigation }) {
+    const [fontsLoaded] = useAlagardFont();
     const [myLedTeams, setMyLedTeams] = useState([]);
     const [allTeams, setAllTeams] = useState([]);
     const [testMaps, setTestMaps] = useState([]);
@@ -70,6 +75,10 @@ export default function MapChallengeScreen({ navigation }) {
         }, [loadData])
     );
 
+    if (!fontsLoaded) {
+        return null;
+    }
+
     const otherTeams = useMemo(() => {
         const myTeamIds = new Set(myLedTeams.map((team) => team.Id));
         return allTeams.filter((team) => !myTeamIds.has(team.Id));
@@ -126,7 +135,8 @@ export default function MapChallengeScreen({ navigation }) {
     }
 
     return (
-        <SafeAreaView style={styles.container}>
+        <ImageBackground source={MENU_BACKGROUND} style={styles.background} imageStyle={styles.backgroundImage}>
+            <SafeAreaView style={styles.container}>
             <Text style={styles.title}>Map Challenges</Text>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -228,7 +238,8 @@ export default function MapChallengeScreen({ navigation }) {
             <Pressable style={styles.secondaryButton} onPress={() => navigation.goBack()}>
                 <Text style={styles.buttonText}>Back</Text>
             </Pressable>
-        </SafeAreaView>
+            </SafeAreaView>
+        </ImageBackground>
     );
 }
 
@@ -241,9 +252,11 @@ function ChoicePill({ label, selected, onPress }) {
 }
 
 const styles = StyleSheet.create({
+    background: { flex: 1 },
+    backgroundImage: { resizeMode: 'cover' },
     container: {
         flex: 1,
-        backgroundColor: '#1a1a2e',
+        backgroundColor: 'transparent',
         padding: 16,
     },
     centered: {
@@ -255,9 +268,9 @@ const styles = StyleSheet.create({
     title: {
         color: '#e0e0e0',
         fontSize: 26,
-        fontWeight: '700',
         marginBottom: 12,
         textAlign: 'center',
+        fontFamily: MODULE_FONT_FAMILY,
     },
     panel: {
         backgroundColor: '#16213e',
@@ -267,17 +280,8 @@ const styles = StyleSheet.create({
         padding: 12,
         marginBottom: 14,
     },
-    panelTitle: {
-        color: '#e0e0e0',
-        fontSize: 17,
-        fontWeight: '700',
-        marginBottom: 8,
-    },
-    helper: {
-        color: '#a0a0c0',
-        fontSize: 12,
-        marginBottom: 6,
-    },
+    panelTitle: { color: '#e0e0e0', fontSize: 17, marginBottom: 8, fontFamily: MODULE_FONT_FAMILY },
+    helper: { color: '#a0a0c0', fontSize: 12, marginBottom: 6, fontFamily: MODULE_FONT_FAMILY },
     horizontalList: {
         marginBottom: 8,
     },
@@ -294,11 +298,7 @@ const styles = StyleSheet.create({
     pillSelected: {
         borderColor: '#e94560',
     },
-    pillText: {
-        color: '#d6d9e6',
-        fontSize: 12,
-        fontWeight: '600',
-    },
+    pillText: { color: '#d6d9e6', fontSize: 12, fontFamily: MODULE_FONT_FAMILY },
     list: {
         paddingBottom: 10,
     },
@@ -310,17 +310,8 @@ const styles = StyleSheet.create({
         padding: 12,
         marginBottom: 10,
     },
-    inviteTitle: {
-        color: '#f0f0f8',
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 6,
-    },
-    meta: {
-        color: '#a0a0c0',
-        fontSize: 12,
-        marginBottom: 3,
-    },
+    inviteTitle: { color: '#f0f0f8', fontSize: 15, marginBottom: 6, fontFamily: MODULE_FONT_FAMILY },
+    meta: { color: '#a0a0c0', fontSize: 12, marginBottom: 3, fontFamily: MODULE_FONT_FAMILY },
     row: {
         flexDirection: 'row',
         gap: 10,
@@ -352,27 +343,11 @@ const styles = StyleSheet.create({
     rejectButton: {
         backgroundColor: '#7a2a3a',
     },
-    buttonText: {
-        color: '#fff',
-        fontWeight: '700',
-        fontSize: 14,
-    },
+    buttonText: { color: '#fff', fontSize: 14, fontFamily: MODULE_FONT_FAMILY },
     disabledButton: {
         opacity: 0.6,
     },
-    error: {
-        color: '#ff667f',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    success: {
-        color: '#7ce38b',
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    empty: {
-        color: '#a0a0c0',
-        textAlign: 'center',
-        marginTop: 8,
-    },
+    error: { color: '#ff667f', marginBottom: 8, textAlign: 'center', fontFamily: MODULE_FONT_FAMILY },
+    success: { color: '#7ce38b', marginBottom: 8, textAlign: 'center', fontFamily: MODULE_FONT_FAMILY },
+    empty: { color: '#a0a0c0', textAlign: 'center', marginTop: 8, fontFamily: MODULE_FONT_FAMILY },
 });

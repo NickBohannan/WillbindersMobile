@@ -13,6 +13,7 @@ import {
     ImageBackground,
 } from 'react-native';
 import { useFonts } from 'expo-font';
+import { MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
 import * as api from '../api';
 
 const TOAST_DURATION_MS = 5000;
@@ -21,19 +22,20 @@ const CAPTURE_ANIMATION_MS = 700;
 const NEUTRAL_HOLD_MS = 140;
 const ANIMATION_FRAME_MS = 33;
 const MAP_BACKGROUND = require('../../assets/testmap.png');
-const MODULE_FONT_FAMILY = 'alagard';
+const ZONE_CARD_BORDER = require('../../assets/zone-card-border.png');
+const ZONE_CARD_BORDER_CURRENT = require('../../assets/zone-card-border-current.png');
 const ZONE_PIN_LAYOUTS = [
-    { left: '10%', top: '14%' },
-    { left: '38%', top: '10%' },
-    { left: '68%', top: '16%' },
-    { left: '16%', top: '36%' },
-    { left: '48%', top: '34%' },
-    { left: '74%', top: '44%' },
-    { left: '8%', top: '62%' },
-    { left: '36%', top: '66%' },
-    { left: '66%', top: '70%' },
-    { left: '22%', top: '82%' },
-    { left: '54%', top: '84%' },
+    { left: '12%', top: '88%' },
+    { left: '62%', top: '32%' },
+    { left: '60%', top: '82%' },
+    { left: '56%', top: '10%' },
+    { left: '45%', top: '65%' },
+    { left: '32%', top: '43%' },
+    { left: '3%', top: '54%' },
+    { left: '66%', top: '54%' },
+    { left: '5%', top: '25%' },
+    { left: '2%', top: '75%' },
+    { left: '53%', top: '84%' },
     { left: '78%', top: '86%' },
 ];
 
@@ -594,33 +596,42 @@ export default function CharacterMapScreen({ route, navigation }) {
                                 return (
                                     <View key={snapshot.zoneId} style={[styles.zonePin, pinLayout]} pointerEvents="box-none">
                                         <Pressable
-                                            style={[styles.zonePinLabel, snapshot.isCurrent && styles.zonePinLabelCurrent]}
+                                            style={styles.zonePinPressable}
                                             onPress={() => setSelectedZoneSnapshot(snapshot)}
                                         >
-                                            <Text style={styles.zonePinName} numberOfLines={1}>
-                                                {snapshot.zone.Name ?? 'Unnamed Zone'}{snapshot.isCurrent ? ' (you)' : ''}
-                                            </Text>
-                                            <Text style={styles.zonePinStatus} numberOfLines={1}>
-                                                {formatZoneStatusText(
-                                                    snapshot,
-                                                    zoneStatusOverrideById[String(snapshot.zoneId)],
-                                                    teamNameById,
-                                                    zoneProgressTrendById[zoneKey],
-                                                    dominantTeamLabelByZoneId[zoneKey],
-                                                )}
-                                            </Text>
-                                            <View style={styles.zonePinProgressTrack}>
-                                                <View
-                                                    style={[
-                                                        styles.zonePinProgressFill,
-                                                        barFillStyle,
-                                                        { width: barWidth },
-                                                    ]}
-                                                />
-                                            </View>
-                                            <Text style={styles.zonePinMeta}>
-                                                {snapshot.zone.IsContested ? 'Contested' : 'Clear'} | {snapshot.leadingControl.toFixed(1)}%
-                                            </Text>
+                                            <ImageBackground
+                                                source={snapshot.isCurrent ? ZONE_CARD_BORDER_CURRENT : ZONE_CARD_BORDER}
+                                                style={styles.zonePinFrame}
+                                                imageStyle={styles.zonePinFrameImage}
+                                                resizeMode="stretch"
+                                            >
+                                                <View style={styles.zonePinLabel}>
+                                                    <Text style={styles.zonePinName} numberOfLines={1}>
+                                                        {snapshot.zone.Name ?? 'Unnamed Zone'}{snapshot.isCurrent ? ' (you)' : ''}
+                                                    </Text>
+                                                    <Text style={styles.zonePinStatus} numberOfLines={1}>
+                                                        {formatZoneStatusText(
+                                                            snapshot,
+                                                            zoneStatusOverrideById[String(snapshot.zoneId)],
+                                                            teamNameById,
+                                                            zoneProgressTrendById[zoneKey],
+                                                            dominantTeamLabelByZoneId[zoneKey],
+                                                        )}
+                                                    </Text>
+                                                    <View style={styles.zonePinProgressTrack}>
+                                                        <View
+                                                            style={[
+                                                                styles.zonePinProgressFill,
+                                                                barFillStyle,
+                                                                { width: barWidth },
+                                                            ]}
+                                                        />
+                                                    </View>
+                                                    <Text style={styles.zonePinMeta}>
+                                                        {snapshot.zone.IsContested ? 'Contested' : 'Clear'} | {snapshot.leadingControl.toFixed(1)}%
+                                                    </Text>
+                                                </View>
+                                            </ImageBackground>
                                         </Pressable>
                                     </View>
                                 );
@@ -898,13 +909,13 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#ff6b6b',
     },
-    toastText: { color: '#e0e0e0', fontSize: 14, fontWeight: '600', fontFamily: MODULE_FONT_FAMILY },
+    toastText: { color: '#e0e0e0', fontSize: 14, fontFamily: MODULE_FONT_FAMILY },
     socketBadge: { color: '#8ea3c7', fontSize: 11 },
     socketBadgeLive: { color: '#86efac' },
     scroll: { padding: 16 },
     header: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 16 },
     back: { color: '#e94560', fontSize: 16, fontFamily: MODULE_FONT_FAMILY },
-    title: { fontSize: 22, fontWeight: 'bold', color: '#e0e0e0', flex: 1, fontFamily: MODULE_FONT_FAMILY },
+    title: { fontSize: 22, color: '#e0e0e0', flex: 1, fontFamily: MODULE_FONT_FAMILY },
     winnerBanner: {
         backgroundColor: '#203a2d',
         borderRadius: 0,
@@ -914,7 +925,7 @@ const styles = StyleSheet.create({
         marginBottom: 14,
     },
     winnerLabel: { color: '#95d5b2', fontSize: 12, textTransform: 'uppercase', marginBottom: 4, fontFamily: MODULE_FONT_FAMILY },
-    winnerValue: { color: '#d8f3dc', fontSize: 18, fontWeight: 'bold', fontFamily: MODULE_FONT_FAMILY },
+    winnerValue: { color: '#d8f3dc', fontSize: 18, fontFamily: MODULE_FONT_FAMILY },
     section: {
         backgroundColor: '#16213e',
         borderRadius: 0,
@@ -923,7 +934,7 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#f5c518',
     },
-    sectionTitle: { color: '#e94560', fontWeight: 'bold', fontSize: 15, marginBottom: 10, fontFamily: MODULE_FONT_FAMILY },
+    sectionTitle: { color: '#e94560', fontSize: 15, marginBottom: 10, fontFamily: MODULE_FONT_FAMILY },
     errorBanner: {
         color: '#ffd8df',
         backgroundColor: 'rgba(233, 69, 96, 0.28)',
@@ -949,7 +960,7 @@ const styles = StyleSheet.create({
     },
     rowHighlight: { backgroundColor: '#1a3060', borderRadius: 6, paddingHorizontal: 6 },
     rowText: { color: '#e0e0e0', fontSize: 14, flex: 1, fontFamily: MODULE_FONT_FAMILY },
-    rowTextHighlight: { color: '#e94560', fontWeight: 'bold', fontFamily: MODULE_FONT_FAMILY },
+    rowTextHighlight: { color: '#e94560', fontFamily: MODULE_FONT_FAMILY },
     rowSub: { color: '#a0a0c0', fontSize: 12, marginLeft: 8, fontFamily: MODULE_FONT_FAMILY },
     zonePinsLayer: {
         ...StyleSheet.absoluteFillObject,
@@ -974,12 +985,24 @@ const styles = StyleSheet.create({
     mapActionButtonText: {
         color: '#ffd8df',
         fontSize: 13,
-        fontWeight: '600',
         fontFamily: MODULE_FONT_FAMILY,
     },
     zonePin: {
         position: 'absolute',
         width: 130,
+    },
+    zonePinPressable: {
+        width: '100%',
+    },
+    zonePinFrame: {
+        width: '120%',
+        marginHorizontal: -10,
+        marginVertical: -10,
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+    },
+    zonePinFrameImage: {
+        borderRadius: 0,
     },
     zonePinDot: {
         width: 10,
@@ -996,16 +1019,10 @@ const styles = StyleSheet.create({
         borderColor: '#ffd8df',
     },
     zonePinLabel: {
-        backgroundColor: 'rgba(88, 52, 132, 0.9)',
-        borderWidth: 1,
-        borderColor: '#facc15',
         borderRadius: 0,
         paddingVertical: 6,
-        paddingHorizontal: 8,
-    },
-    zonePinLabelCurrent: {
-        backgroundColor: '#1a5c1a',
-        borderColor: '#fde047',
+        paddingHorizontal: 12,
+        margin: 3,
     },
     zonePinName: {
         color: '#f0f4ff',
@@ -1082,7 +1099,6 @@ const styles = StyleSheet.create({
     modalTitle: {
         color: '#f0f4ff',
         fontSize: 18,
-        fontWeight: '600',
         fontFamily: MODULE_FONT_FAMILY,
     },
     modalSubtitle: {
@@ -1107,7 +1123,6 @@ const styles = StyleSheet.create({
     },
     modalCloseText: {
         color: '#e0e0e0',
-        fontWeight: '600',
         fontFamily: MODULE_FONT_FAMILY,
     },
     stepSubmitActionButton: {
@@ -1119,7 +1134,6 @@ const styles = StyleSheet.create({
     },
     stepSubmitActionText: {
         color: '#ffffff',
-        fontWeight: '600',
         fontFamily: MODULE_FONT_FAMILY,
     },
     zoneActionButton: {
@@ -1134,7 +1148,6 @@ const styles = StyleSheet.create({
     },
     zoneActionButtonText: {
         color: '#d8f3dc',
-        fontWeight: '600',
         fontFamily: MODULE_FONT_FAMILY,
     },
     zoneSelectRow: {
@@ -1158,6 +1171,5 @@ const styles = StyleSheet.create({
     },
     zoneSelectRowTextActive: {
         color: '#95d5b2',
-        fontWeight: '600',
     },
 });
