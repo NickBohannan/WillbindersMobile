@@ -41,6 +41,15 @@ async function request(method, path, body = null) {
     }
 
     const response = await fetch(`${BASE_URL}${path}`, options);
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+
+    function tryParseJson(text) {
+        try {
+            return JSON.parse(text);
+        } catch {
+            return null;
+        }
+    }
 
     if (!response.ok) {
         if (response.status === 401) {
@@ -51,19 +60,15 @@ async function request(method, path, body = null) {
         const apiError = new Error(text || `HTTP ${response.status}`);
 
         if (text) {
-            try {
-                const parsed = JSON.parse(text);
-                if (parsed && typeof parsed === 'object') {
-                    if (typeof parsed.Message === 'string' && parsed.Message.trim()) {
-                        apiError.message = parsed.Message;
-                    }
-
-                    if (typeof parsed.Code === 'string' && parsed.Code.trim()) {
-                        apiError.code = parsed.Code;
-                    }
+            const parsed = tryParseJson(text);
+            if (parsed && typeof parsed === 'object') {
+                if (typeof parsed.Message === 'string' && parsed.Message.trim()) {
+                    apiError.message = parsed.Message;
                 }
-            } catch {
-                // Keep raw text fallback.
+
+                if (typeof parsed.Code === 'string' && parsed.Code.trim()) {
+                    apiError.code = parsed.Code;
+                }
             }
         }
 
@@ -71,7 +76,16 @@ async function request(method, path, body = null) {
     }
 
     const text = await response.text();
-    return text ? JSON.parse(text) : null;
+    if (!text) {
+        return null;
+    }
+
+    if (contentType.includes('application/json') || contentType.includes('+json')) {
+        const parsed = tryParseJson(text);
+        return parsed ?? text;
+    }
+
+    return text;
 }
 
 // Auth
