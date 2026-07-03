@@ -15,7 +15,6 @@ import MyTeamsScreen from './src/screens/MyTeamsScreen';
 import TeamInvitesScreen from './src/screens/TeamInvitesScreen';
 import TeamRequestsScreen from './src/screens/TeamRequestsScreen';
 import CharacterMapScreen from './src/screens/CharacterMapScreen';
-import SelectMapScreen from './src/screens/SelectMapScreen';
 import MapChallengeScreen from './src/screens/MapChallengeScreen';
 
 const Stack = createNativeStackNavigator();
@@ -43,7 +42,6 @@ function RootNavigator() {
                     <Stack.Screen name="TeamInvites" component={TeamInvitesScreen} />
                     <Stack.Screen name="TeamRequests" component={TeamRequestsScreen} />
                     <Stack.Screen name="MapChallenges" component={MapChallengeScreen} />
-                    <Stack.Screen name="SelectMap" component={SelectMapScreen} />
                     <Stack.Screen name="CharacterMap" component={CharacterMapScreen} />
                 </Stack.Group>
             ) : (

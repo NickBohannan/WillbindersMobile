@@ -117,6 +117,12 @@ export const getAllMaps = () =>
 export const getTestMaps = () =>
     request('GET', '/api/RealmData/GetTestMapsAsync');
 
+export const getMapTemplates = () =>
+    request('GET', '/api/RealmData/GetMapTemplatesAsync');
+
+export const createMapFromTemplate = (name, mapTemplateId, isTestMap = true) =>
+    request('POST', '/api/RealmData/CreateMapFromTemplateAsync', { name, mapTemplateId, isTestMap });
+
 export const getZonesByMap = (mapId) =>
     request('GET', `/api/RealmData/GetZonesByMapAsync/${mapId}`);
 

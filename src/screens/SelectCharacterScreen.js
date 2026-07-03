@@ -53,7 +53,7 @@ export default function SelectCharacterScreen({ navigation, route }) {
     );
 
     function handleEnterMap(character) {
-        navigation.navigate('SelectMap', { character });
+        navigation.navigate('CharacterMap', { character });
     }
 
     async function openHallOfLegends() {

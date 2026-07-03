@@ -8,6 +8,7 @@ import {
     StyleSheet,
     ActivityIndicator,
     ImageBackground,
+    TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../api';
@@ -20,15 +21,20 @@ export default function MapChallengeScreen({ navigation }) {
     const [myLedTeams, setMyLedTeams] = useState([]);
     const [allTeams, setAllTeams] = useState([]);
     const [testMaps, setTestMaps] = useState([]);
+    const [mapTemplates, setMapTemplates] = useState([]);
     const [pendingInvites, setPendingInvites] = useState([]);
 
     const [selectedMyTeamId, setSelectedMyTeamId] = useState(null);
     const [selectedOtherTeamId, setSelectedOtherTeamId] = useState(null);
     const [selectedMapId, setSelectedMapId] = useState(null);
+    const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+    const [newMapName, setNewMapName] = useState('');
 
     const [loading, setLoading] = useState(true);
     const [busyInviteId, setBusyInviteId] = useState(null);
     const [submitting, setSubmitting] = useState(false);
+    const [creatingMap, setCreatingMap] = useState(false);
+    const [startingMap, setStartingMap] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
@@ -38,21 +44,24 @@ export default function MapChallengeScreen({ navigation }) {
         setSuccess(null);
 
         try {
-            const [myTeamsResult, allTeamsResult, mapsResult, pendingResult] = await Promise.all([
+            const [myTeamsResult, allTeamsResult, mapsResult, templatesResult, pendingResult] = await Promise.all([
                 api.getMyLedTeams(),
                 api.getAllTeams(),
                 api.getTestMaps(),
+                api.getMapTemplates(),
                 api.getPendingMapChallengeInvites(),
             ]);
 
             const myTeams = Array.isArray(myTeamsResult) ? myTeamsResult : [];
             const everyTeam = Array.isArray(allTeamsResult) ? allTeamsResult : [];
             const maps = Array.isArray(mapsResult) ? mapsResult : [];
+            const templates = Array.isArray(templatesResult) ? templatesResult : [];
             const pending = Array.isArray(pendingResult) ? pendingResult : [];
 
             setMyLedTeams(myTeams);
             setAllTeams(everyTeam);
             setTestMaps(maps);
+            setMapTemplates(templates);
             setPendingInvites(pending);
 
             if (myTeams.length > 0 && !selectedMyTeamId) {
@@ -62,12 +71,16 @@ export default function MapChallengeScreen({ navigation }) {
             if (maps.length > 0 && !selectedMapId) {
                 setSelectedMapId(maps[0].MapId);
             }
+
+            if (templates.length > 0 && !selectedTemplateId) {
+                setSelectedTemplateId(templates[0].MapTemplateId);
+            }
         } catch (e) {
             setError(e.message || 'Failed to load map challenge data.');
         } finally {
             setLoading(false);
         }
-    }, [selectedMapId, selectedMyTeamId]);
+    }, [selectedMapId, selectedMyTeamId, selectedTemplateId]);
 
     useFocusEffect(
         useCallback(() => {
@@ -103,6 +116,61 @@ export default function MapChallengeScreen({ navigation }) {
             setError(e.message || 'Failed to send challenge invite.');
         } finally {
             setSubmitting(false);
+        }
+    }
+
+    async function handleCreateMapFromTemplate() {
+        if (!selectedTemplateId || creatingMap) {
+            return;
+        }
+
+        setCreatingMap(true);
+        setError(null);
+        setSuccess(null);
+
+        try {
+            const selectedTemplate = mapTemplates.find((template) => template.MapTemplateId === selectedTemplateId);
+            const trimmed = newMapName.trim();
+            const defaultName = selectedTemplate?.Name ? `${selectedTemplate.Name} Live` : 'Template Map Live';
+            const mapName = trimmed || defaultName;
+            const created = await api.createMapFromTemplate(mapName, selectedTemplateId, true);
+            setSelectedMapId(created?.MapId ?? null);
+            setNewMapName('');
+            setSuccess(`Map created from template: ${created?.Name || mapName}`);
+            await loadData();
+        } catch (e) {
+            setError(e.message || 'Failed to create map from template.');
+        } finally {
+            setCreatingMap(false);
+        }
+    }
+
+    async function handleStartSelectedMap() {
+        if (!selectedMapId || startingMap) {
+            return;
+        }
+
+        setStartingMap(true);
+        setError(null);
+        setSuccess(null);
+
+        try {
+            const validation = await api.validateMapStart(selectedMapId);
+            if (!validation?.CanStart) {
+                setError(validation?.Reason || 'Map cannot be started yet.');
+                return;
+            }
+
+            const started = await api.startMap(selectedMapId);
+            if (started?.Started) {
+                setSuccess(started?.Message || 'Map started.');
+            } else {
+                setError(started?.Message || 'Map cannot be started yet.');
+            }
+        } catch (e) {
+            setError(e.message || 'Failed to start map.');
+        } finally {
+            setStartingMap(false);
         }
     }
 
@@ -143,6 +211,39 @@ export default function MapChallengeScreen({ navigation }) {
             {success ? <Text style={styles.success}>{success}</Text> : null}
 
             <View style={styles.panel}>
+                <Text style={styles.panelTitle}>Create Map From Template</Text>
+                <Text style={styles.helper}>Select one template (admin-managed)</Text>
+                <FlatList
+                    horizontal
+                    data={mapTemplates}
+                    keyExtractor={(item) => item.MapTemplateId}
+                    style={styles.horizontalList}
+                    renderItem={({ item }) => (
+                        <ChoicePill
+                            label={`${item.Name} (${item.ZoneCount} zones)`}
+                            selected={item.MapTemplateId === selectedTemplateId}
+                            onPress={() => setSelectedTemplateId(item.MapTemplateId)}
+                        />
+                    )}
+                />
+
+                <TextInput
+                    value={newMapName}
+                    onChangeText={setNewMapName}
+                    placeholder="Optional live map name"
+                    placeholderTextColor="#6f7390"
+                    style={styles.input}
+                    editable={!creatingMap}
+                />
+
+                <Pressable
+                    style={[styles.primaryButton, creatingMap ? styles.disabledButton : null]}
+                    onPress={handleCreateMapFromTemplate}
+                    disabled={creatingMap || !selectedTemplateId}
+                >
+                    <Text style={styles.buttonText}>{creatingMap ? 'Creating...' : 'Create Map From Template'}</Text>
+                </Pressable>
+
                 <Text style={styles.panelTitle}>Send Team Challenge</Text>
                 <Text style={styles.helper}>1) Select your team</Text>
                 <FlatList
@@ -195,6 +296,15 @@ export default function MapChallengeScreen({ navigation }) {
                     disabled={submitting || !selectedMapId || !selectedMyTeamId || !selectedOtherTeamId}
                 >
                     <Text style={styles.buttonText}>{submitting ? 'Sending...' : 'Send Challenge Invite'}</Text>
+                </Pressable>
+
+                <Text style={styles.helper}>4) Start selected map after opposing team accepts invite</Text>
+                <Pressable
+                    style={[styles.startButton, startingMap ? styles.disabledButton : null]}
+                    onPress={handleStartSelectedMap}
+                    disabled={startingMap || !selectedMapId}
+                >
+                    <Text style={styles.buttonText}>{startingMap ? 'Starting...' : 'Start Selected Map'}</Text>
                 </Pressable>
             </View>
 
@@ -282,6 +392,17 @@ const styles = StyleSheet.create({
     },
     panelTitle: { color: '#e0e0e0', fontSize: 17, marginBottom: 8, fontFamily: MODULE_FONT_FAMILY },
     helper: { color: '#a0a0c0', fontSize: 12, marginBottom: 6, fontFamily: MODULE_FONT_FAMILY },
+    input: {
+        backgroundColor: '#10182f',
+        borderColor: '#0f3460',
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+        color: '#e0e0e0',
+        marginBottom: 8,
+        fontFamily: MODULE_FONT_FAMILY,
+    },
     horizontalList: {
         marginBottom: 8,
     },
@@ -336,6 +457,13 @@ const styles = StyleSheet.create({
         paddingVertical: 11,
         alignItems: 'center',
         marginTop: 10,
+    },
+    startButton: {
+        backgroundColor: '#2c8b46',
+        borderRadius: 8,
+        paddingVertical: 11,
+        alignItems: 'center',
+        marginTop: 8,
     },
     acceptButton: {
         backgroundColor: '#2c8b46',
