@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = 'http://192.168.1.185:5075';
+const BASE_URL = 'http://192.168.1.6:5075';
 let inMemoryToken = null;
 
 export function setAuthToken(token) {
