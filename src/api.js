@@ -157,6 +157,9 @@ export const createMapChallengeInvite = (mapId, inviterTeamId, inviteeTeamId) =>
 export const getPendingMapChallengeInvites = () =>
     request('GET', '/api/RealmData/GetPendingMapChallengeInvites');
 
+export const getAcceptedMapChallenges = () =>
+    request('GET', '/api/RealmData/GetAcceptedMapChallenges');
+
 export const respondToMapChallengeInvite = (inviteId, response) =>
     request('PUT', '/api/RealmData/RespondToMapChallengeInvite', { inviteId, response });
 

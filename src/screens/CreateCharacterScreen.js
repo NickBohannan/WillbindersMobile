@@ -11,19 +11,23 @@ import {
     ImageBackground,
 } from 'react-native';
 import * as api from '../api';
+import { useAuth } from '../context/AuthContext';
 import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
 
 const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 
 export default function CreateCharacterScreen({ navigation, route }) {
     const initialTeamId = route?.params?.initialTeamId ?? '';
+    const { userId } = useAuth();
     const [fontsLoaded] = useAlagardFont();
     const [characterName, setCharacterName] = useState('');
     const [teams, setTeams] = useState([]);
     const [maps, setMaps] = useState([]);
+    const [acceptedChallenges, setAcceptedChallenges] = useState([]);
     const [zones, setZones] = useState([]);
     const [selectedTeamId, setSelectedTeamId] = useState('');
     const [selectedMapId, setSelectedMapId] = useState('');
+    const [selectedAcceptedInviteId, setSelectedAcceptedInviteId] = useState('');
     const [selectedZoneId, setSelectedZoneId] = useState('');
     const [loading, setLoading] = useState(true);
     const [loadingZones, setLoadingZones] = useState(false);
@@ -33,23 +37,48 @@ export default function CreateCharacterScreen({ navigation, route }) {
     useEffect(() => {
         async function loadInitialData() {
             try {
-                const [teamData, mapData] = await Promise.all([api.getAllTeams(), api.getAllMaps()]);
+                const [teamData, mapData, acceptedData] = await Promise.all([
+                    api.getAllTeams(),
+                    api.getAllMaps(),
+                    api.getAcceptedMapChallenges(),
+                ]);
 
                 const loadedTeams = Array.isArray(teamData) ? teamData : [];
                 const loadedMaps = Array.isArray(mapData) ? mapData : [];
+                const loadedAccepted = Array.isArray(acceptedData) ? acceptedData : [];
 
                 setTeams(loadedTeams);
                 setMaps(loadedMaps);
+                setAcceptedChallenges(loadedAccepted);
 
-                if (loadedTeams.length > 0) {
-                    const preferredTeam = initialTeamId
+                const preferredTeam = loadedTeams.length > 0
+                    ? (initialTeamId
                         ? loadedTeams.find((team) => team.Id === initialTeamId)
-                        : null;
-                    setSelectedTeamId(preferredTeam?.Id ?? loadedTeams[0].Id);
-                }
+                        : null)
+                    : null;
 
-                if (loadedMaps.length > 0) {
-                    setSelectedMapId(loadedMaps[0].MapId);
+                if (loadedAccepted.length > 0) {
+                    const firstAccepted = loadedAccepted[0];
+                    setSelectedAcceptedInviteId(firstAccepted.InviteId);
+                    setSelectedMapId(firstAccepted.MapId);
+
+                    if (firstAccepted.MyTeamId) {
+                        setSelectedTeamId(firstAccepted.MyTeamId);
+                    } else if (preferredTeam?.Id) {
+                        setSelectedTeamId(preferredTeam.Id);
+                    } else if (loadedTeams.length > 0) {
+                        setSelectedTeamId(loadedTeams[0].Id);
+                    }
+                } else {
+                    if (preferredTeam?.Id) {
+                        setSelectedTeamId(preferredTeam.Id);
+                    } else if (loadedTeams.length > 0) {
+                        setSelectedTeamId(loadedTeams[0].Id);
+                    }
+
+                    if (loadedMaps.length > 0) {
+                        setSelectedMapId(loadedMaps[0].MapId);
+                    }
                 }
             } catch (e) {
                 setError(e.message || 'Failed to load create-character data.');
@@ -88,6 +117,19 @@ export default function CreateCharacterScreen({ navigation, route }) {
         loadZones();
     }, [selectedMapId]);
 
+    function handleSelectAcceptedChallenge(challenge) {
+        if (!challenge?.MapId) {
+            return;
+        }
+
+        setSelectedAcceptedInviteId(challenge.InviteId || '');
+        setSelectedMapId(challenge.MapId);
+        if (challenge.MyTeamId) {
+            setSelectedTeamId(challenge.MyTeamId);
+        }
+        setError(null);
+    }
+
     async function handleCreateCharacter() {
         if (!selectedTeamId || !selectedMapId || !selectedZoneId) {
             setError('Pick a team, map, and zone before creating your character.');
@@ -98,7 +140,32 @@ export default function CreateCharacterScreen({ navigation, route }) {
         setError(null);
 
         try {
-            await api.createCharacter(characterName.trim(), selectedTeamId, selectedZoneId, selectedMapId);
+            const trimmedName = characterName.trim();
+            await api.createCharacter(trimmedName, selectedTeamId, selectedZoneId, selectedMapId);
+
+            if (userId) {
+                const data = await api.getCharactersByUserId(userId);
+                const characters = Array.isArray(data?.Characters) ? data.Characters : [];
+                const desiredName = trimmedName || 'Unnamed Character';
+                const exactMatch = characters.find((character) =>
+                    character?.TeamId === selectedTeamId
+                    && character?.CurrentMap === selectedMapId
+                    && character?.CurrentZone === selectedZoneId
+                    && (character?.CharacterName || 'Unnamed Character') === desiredName
+                );
+                const fallbackMatch = characters.find((character) =>
+                    character?.TeamId === selectedTeamId
+                    && character?.CurrentMap === selectedMapId
+                    && character?.CurrentZone === selectedZoneId
+                );
+                const createdCharacter = exactMatch || fallbackMatch;
+
+                if (createdCharacter) {
+                    navigation.navigate('CharacterMap', { character: createdCharacter });
+                    return;
+                }
+            }
+
             navigation.navigate('SelectCharacter', { refreshKey: Date.now() });
         } catch (e) {
             setError(e.message || 'Failed to create character.');
@@ -143,7 +210,10 @@ export default function CreateCharacterScreen({ navigation, route }) {
                         <Pressable
                             key={team.Id}
                             style={[styles.optionButton, selectedTeamId === team.Id && styles.optionButtonActive]}
-                            onPress={() => setSelectedTeamId(team.Id)}
+                            onPress={() => {
+                                setSelectedTeamId(team.Id);
+                                setSelectedAcceptedInviteId('');
+                            }}
                         >
                             <Text
                                 style={[styles.optionText, selectedTeamId === team.Id && styles.optionTextActive]}
@@ -155,6 +225,29 @@ export default function CreateCharacterScreen({ navigation, route }) {
                     ))}
                 </View>
 
+                <Text style={styles.label}>Accepted Map Challenges</Text>
+                {acceptedChallenges.length === 0 ? (
+                    <Text style={styles.helperText}>No accepted map challenges found for your led teams.</Text>
+                ) : (
+                    <View style={styles.challengeList}>
+                        {acceptedChallenges.map((challenge) => {
+                            const isSelected = challenge.InviteId === selectedAcceptedInviteId;
+                            const teamLabel = challenge.MyTeamName || challenge.InviteeTeamName || challenge.InviterTeamName;
+                            return (
+                                <Pressable
+                                    key={challenge.InviteId}
+                                    style={[styles.challengeCard, isSelected ? styles.challengeCardActive : null]}
+                                    onPress={() => handleSelectAcceptedChallenge(challenge)}
+                                >
+                                    <Text style={styles.challengeTitle} numberOfLines={1}>{challenge.MapName || challenge.MapId}</Text>
+                                    <Text style={styles.challengeMeta} numberOfLines={1}>Your Team: {teamLabel}</Text>
+                                    <Text style={styles.challengeMeta} numberOfLines={1}>Match: {challenge.InviterTeamName} vs {challenge.InviteeTeamName}</Text>
+                                </Pressable>
+                            );
+                        })}
+                    </View>
+                )}
+
                 <Text style={styles.label}>Map</Text>
                 <View style={styles.optionGrid}>
                     {maps.map((map) => (
@@ -164,7 +257,10 @@ export default function CreateCharacterScreen({ navigation, route }) {
                                 styles.optionButton,
                                 selectedMapId === map.MapId && styles.optionButtonActive,
                             ]}
-                            onPress={() => setSelectedMapId(map.MapId)}
+                            onPress={() => {
+                                setSelectedMapId(map.MapId);
+                                setSelectedAcceptedInviteId('');
+                            }}
                         >
                             <Text
                                 style={[
@@ -249,6 +345,31 @@ const styles = StyleSheet.create({
     optionButtonActive: { borderColor: '#e94560', backgroundColor: '#213051' },
     optionText: { color: '#e0e0e0', fontFamily: MODULE_FONT_FAMILY },
     optionTextActive: { color: '#fff', fontFamily: MODULE_FONT_FAMILY },
+    helperText: { color: '#a0a0c0', fontSize: 12, fontFamily: MODULE_FONT_FAMILY },
+    challengeList: { marginTop: 2, gap: 8 },
+    challengeCard: {
+        backgroundColor: '#16213e',
+        borderWidth: 1,
+        borderColor: '#0f3460',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 10,
+    },
+    challengeCardActive: {
+        borderColor: '#e94560',
+        backgroundColor: '#213051',
+    },
+    challengeTitle: {
+        color: '#e0e0e0',
+        fontSize: 14,
+        marginBottom: 2,
+        fontFamily: MODULE_FONT_FAMILY,
+    },
+    challengeMeta: {
+        color: '#a0a0c0',
+        fontSize: 11,
+        fontFamily: MODULE_FONT_FAMILY,
+    },
     zoneLoader: { marginTop: 6 },
     buttonRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 18 },
     actionButton: { flex: 1, borderRadius: 8, paddingVertical: 12, alignItems: 'center' },

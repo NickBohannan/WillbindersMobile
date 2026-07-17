@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     SafeAreaView,
     View,
@@ -29,6 +29,8 @@ export default function MapChallengeScreen({ navigation }) {
     const [selectedMapId, setSelectedMapId] = useState(null);
     const [selectedTemplateId, setSelectedTemplateId] = useState(null);
     const [newMapName, setNewMapName] = useState('');
+    const [selectedMapValidation, setSelectedMapValidation] = useState(null);
+    const [validatingMap, setValidatingMap] = useState(false);
 
     const [loading, setLoading] = useState(true);
     const [busyInviteId, setBusyInviteId] = useState(null);
@@ -41,7 +43,6 @@ export default function MapChallengeScreen({ navigation }) {
     const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
-        setSuccess(null);
 
         try {
             const [myTeamsResult, allTeamsResult, mapsResult, templatesResult, pendingResult] = await Promise.all([
@@ -81,6 +82,28 @@ export default function MapChallengeScreen({ navigation }) {
             setLoading(false);
         }
     }, [selectedMapId, selectedMyTeamId, selectedTemplateId]);
+
+    const validateSelectedMap = useCallback(async (mapId) => {
+        if (!mapId) {
+            setSelectedMapValidation(null);
+            return;
+        }
+
+        setValidatingMap(true);
+        try {
+            const validation = await api.validateMapStart(mapId);
+            setSelectedMapValidation(validation ?? null);
+        } catch (e) {
+            setSelectedMapValidation(null);
+            setError(e.message || 'Failed to validate selected map.');
+        } finally {
+            setValidatingMap(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        validateSelectedMap(selectedMapId);
+    }, [selectedMapId, validateSelectedMap]);
 
     useFocusEffect(
         useCallback(() => {
@@ -150,12 +173,17 @@ export default function MapChallengeScreen({ navigation }) {
             return;
         }
 
+        if (!selectedMapValidation?.CanStart) {
+            setError(selectedMapValidation?.Reason || 'Map cannot be started yet.');
+            return;
+        }
+
         setStartingMap(true);
         setError(null);
         setSuccess(null);
 
         try {
-            const validation = await api.validateMapStart(selectedMapId);
+            const validation = selectedMapValidation ?? await api.validateMapStart(selectedMapId);
             if (!validation?.CanStart) {
                 setError(validation?.Reason || 'Map cannot be started yet.');
                 return;
@@ -167,6 +195,8 @@ export default function MapChallengeScreen({ navigation }) {
             } else {
                 setError(started?.Message || 'Map cannot be started yet.');
             }
+
+            await validateSelectedMap(selectedMapId);
         } catch (e) {
             setError(e.message || 'Failed to start map.');
         } finally {
@@ -184,8 +214,14 @@ export default function MapChallengeScreen({ navigation }) {
         setSuccess(null);
 
         try {
-            await api.respondToMapChallengeInvite(inviteId, response);
-            setSuccess(response === 'accepted' ? 'Challenge accepted.' : 'Challenge rejected.');
+            const updated = await api.respondToMapChallengeInvite(inviteId, response);
+            if (response === 'accepted' && updated?.MapId) {
+                setSelectedMapId(updated.MapId);
+                await validateSelectedMap(updated.MapId);
+                setSuccess(`Challenge accepted. Map ${updated.MapName || updated.MapId} is ready to start.`);
+            } else {
+                setSuccess('Challenge rejected.');
+            }
             await loadData();
         } catch (e) {
             setError(e.message || `Failed to ${response} challenge.`);
@@ -290,21 +326,52 @@ export default function MapChallengeScreen({ navigation }) {
                     )}
                 />
 
+                <View style={styles.validationCard}>
+                    <Text style={styles.validationTitle}>Selected Map Status</Text>
+                    {validatingMap ? (
+                        <ActivityIndicator size="small" color="#e94560" />
+                    ) : selectedMapValidation ? (
+                        <>
+                            <Text style={styles.validationLine}>
+                                {selectedMapValidation.CanStart ? 'Ready to start.' : selectedMapValidation.Reason}
+                            </Text>
+                            <Text style={styles.validationMeta}>
+                                Teams on map: {Object.keys(selectedMapValidation.TeamCharacterCounts || {}).length}
+                            </Text>
+                        </>
+                    ) : (
+                        <Text style={styles.validationLine}>Select a map to check start readiness.</Text>
+                    )}
+                </View>
+
+                {selectedMapId && selectedMapValidation?.CanStart ? (
+                    <View style={styles.readyCard}>
+                        <Text style={styles.readyTitle}>Ready To Start</Text>
+                        <Text style={styles.readyLine}>
+                            {selectedMapValidation.Reason || 'The map has enough teams and an accepted challenge invite.'}
+                        </Text>
+                        <Text style={styles.readyMeta}>
+                            Map ID: {selectedMapId}
+                        </Text>
+                        <Pressable
+                            style={[styles.startButton, startingMap || validatingMap ? styles.disabledButton : null]}
+                            onPress={handleStartSelectedMap}
+                            disabled={startingMap || validatingMap}
+                        >
+                            <Text style={styles.buttonText}>{startingMap ? 'Starting...' : 'Start This Map'}</Text>
+                        </Pressable>
+                    </View>
+                ) : null}
+
                 <Pressable
-                    style={[styles.primaryButton, submitting ? styles.disabledButton : null]}
+                    style={[
+                        styles.primaryButton,
+                        submitting || startingMap || validatingMap || !selectedMapValidation?.CanStart ? styles.disabledButton : null,
+                    ]}
                     onPress={handleSendChallenge}
                     disabled={submitting || !selectedMapId || !selectedMyTeamId || !selectedOtherTeamId}
                 >
                     <Text style={styles.buttonText}>{submitting ? 'Sending...' : 'Send Challenge Invite'}</Text>
-                </Pressable>
-
-                <Text style={styles.helper}>4) Start selected map after opposing team accepts invite</Text>
-                <Pressable
-                    style={[styles.startButton, startingMap ? styles.disabledButton : null]}
-                    onPress={handleStartSelectedMap}
-                    disabled={startingMap || !selectedMapId}
-                >
-                    <Text style={styles.buttonText}>{startingMap ? 'Starting...' : 'Start Selected Map'}</Text>
                 </Pressable>
             </View>
 
@@ -405,6 +472,31 @@ const styles = StyleSheet.create({
     },
     horizontalList: {
         marginBottom: 8,
+    },
+    validationCard: {
+        backgroundColor: '#10182f',
+        borderColor: '#0f3460',
+        borderWidth: 1,
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 10,
+    },
+    validationTitle: {
+        color: '#e0e0e0',
+        fontSize: 14,
+        marginBottom: 6,
+        fontFamily: MODULE_FONT_FAMILY,
+    },
+    validationLine: {
+        color: '#a0a0c0',
+        fontSize: 12,
+        fontFamily: MODULE_FONT_FAMILY,
+    },
+    validationMeta: {
+        color: '#7ce38b',
+        fontSize: 11,
+        marginTop: 4,
+        fontFamily: MODULE_FONT_FAMILY,
     },
     pill: {
         backgroundColor: '#10182f',

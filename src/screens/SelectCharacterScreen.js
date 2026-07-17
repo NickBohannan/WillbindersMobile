@@ -149,7 +149,12 @@ export default function SelectCharacterScreen({ navigation, route }) {
             {error && <Text style={styles.error}>{error}</Text>}
 
             {!error && characters.length === 0 && (
-                <Text style={styles.empty}>No characters found for your account.</Text>
+                <View style={styles.emptyState}>
+                    <Text style={styles.empty}>No characters found for your account.</Text>
+                    <Pressable style={styles.createButton} onPress={() => navigation.navigate('CreateCharacter')}>
+                        <Text style={styles.createButtonText}>Create Character</Text>
+                    </Pressable>
+                </View>
             )}
 
             <FlatList
@@ -259,6 +264,22 @@ const styles = StyleSheet.create({
     },
     hallButtonText: {
         color: '#f6df87',
+        fontFamily: MODULE_FONT_FAMILY,
+    },
+    emptyState: {
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingBottom: 10,
+    },
+    createButton: {
+        marginTop: 10,
+        backgroundColor: '#e94560',
+        borderRadius: 8,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+    },
+    createButtonText: {
+        color: '#fff',
         fontFamily: MODULE_FONT_FAMILY,
     },
     list: { padding: 16 },

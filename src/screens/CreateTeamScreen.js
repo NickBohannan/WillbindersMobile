@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     SafeAreaView,
     ScrollView,
@@ -9,7 +9,6 @@ import {
     StyleSheet,
     ActivityIndicator,
     ImageBackground,
-    Modal,
 } from 'react-native';
 import * as api from '../api';
 import { useAlagardFont, MODULE_FONT_FAMILY } from '../hooks/useAlagardFont';
@@ -19,116 +18,33 @@ const MENU_BACKGROUND = require('../../assets/menu-background2.png');
 export default function CreateTeamScreen({ navigation }) {
     const [fontsLoaded] = useAlagardFont();
     const [teamName, setTeamName] = useState('');
-    const [characterName, setCharacterName] = useState('');
-    const [mapTemplates, setMapTemplates] = useState([]);
-    const [selectedTemplateId, setSelectedTemplateId] = useState('');
-    const [selectedTemplateZoneId, setSelectedTemplateZoneId] = useState('');
-    const [selectedMapId, setSelectedMapId] = useState('');
-    const [selectedZoneId, setSelectedZoneId] = useState('');
-    const [isTemplateDropdownVisible, setIsTemplateDropdownVisible] = useState(false);
-    const [isTemplateZoneDropdownVisible, setIsTemplateZoneDropdownVisible] = useState(false);
-    const [loadingSetup, setLoadingSetup] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState('');
     const [createdTeam, setCreatedTeam] = useState(null);
 
-    useEffect(() => {
-        async function loadInitialData() {
-            try {
-                const templateData = await api.getMapTemplates();
-                const loadedTemplates = Array.isArray(templateData) ? templateData : [];
-
-                setMapTemplates(loadedTemplates);
-                if (loadedTemplates.length > 0) {
-                    setSelectedTemplateId(loadedTemplates[0].MapTemplateId);
-                }
-            } catch (e) {
-                setError(e.message || 'Failed to load map templates.');
-            } finally {
-                setLoadingSetup(false);
-            }
-        }
-
-        loadInitialData();
-    }, []);
-
-    useEffect(() => {
-        const selectedTemplate = mapTemplates.find((template) => template.MapTemplateId === selectedTemplateId) || null;
-        const templateZones = Array.isArray(selectedTemplate?.ZoneTemplates) ? selectedTemplate.ZoneTemplates : [];
-
-        if (templateZones.length === 0) {
-            setSelectedTemplateZoneId('');
-            return;
-        }
-
-        const zoneStillValid = templateZones.some((zone) => zone.ZoneTemplateId === selectedTemplateZoneId);
-        if (!zoneStillValid) {
-            setSelectedTemplateZoneId(templateZones[0].ZoneTemplateId);
-        }
-    }, [mapTemplates, selectedTemplateId, selectedTemplateZoneId]);
-
-    const selectedTemplate = mapTemplates.find((template) => template.MapTemplateId === selectedTemplateId) || null;
-    const selectedTemplateZone = selectedTemplate?.ZoneTemplates?.find((zone) => zone.ZoneTemplateId === selectedTemplateZoneId) || null;
-
-    async function handleCreateTeamAndCharacter() {
+    async function handleCreateTeam() {
         const trimmedName = teamName.trim();
-        if (!createdTeam && !trimmedName) {
+        if (!trimmedName) {
             setError('Team name is required.');
-            return;
-        }
-
-        if (!selectedTemplateId || !selectedTemplateZoneId) {
-            setError('Pick a map template and zone before creating your team character.');
             return;
         }
 
         setSubmitting(true);
         setError(null);
         setSuccess('');
-        let teamForSubmission = createdTeam;
 
         try {
-            if (!teamForSubmission?.TeamId) {
-                teamForSubmission = await api.createTeam(trimmedName);
-                setCreatedTeam(teamForSubmission);
-            }
-
-            if (!teamForSubmission?.TeamId) {
+            const newTeam = await api.createTeam(trimmedName);
+            if (!newTeam?.TeamId) {
                 throw new Error('Team was created but no team ID was returned.');
             }
 
-            const templateName = selectedTemplate?.Name || 'Template Map';
-            const mapName = `${templateName} Live`;
-            const createdMap = await api.createMapFromTemplate(mapName, selectedTemplateId, true);
-            const createdMapId = createdMap?.MapId;
-            if (!createdMapId) {
-                throw new Error('Map was created but no map ID was returned.');
-            }
-
-            const createdZones = await api.getZonesByMap(createdMapId);
-            const liveZones = Array.isArray(createdZones) ? createdZones : [];
-            const selectedZoneName = selectedTemplateZone?.Name || '';
-            const selectedLiveZone = liveZones.find((zone) => zone.Name === selectedZoneName) || liveZones[0] || null;
-
-            if (!selectedLiveZone?.Id) {
-                throw new Error('Map was created but no starting zone was returned.');
-            }
-
-            setSelectedMapId(createdMapId);
-            setSelectedZoneId(selectedLiveZone.Id);
-
-            await api.createCharacter(characterName.trim(), teamForSubmission.TeamId, selectedLiveZone.Id, createdMapId);
-            setSuccess('Team and character created successfully.');
+            setCreatedTeam(newTeam);
+            setSuccess('Team created successfully.');
             setTeamName('');
-            setCharacterName('');
-            navigation.navigate('SelectCharacter', { refreshKey: Date.now() });
         } catch (e) {
-            if (teamForSubmission?.TeamId) {
-                setError(`Team created, but character creation failed: ${e.message || 'Unknown error.'}`);
-            } else {
-                setError(e.message || 'Failed to create team and character.');
-            }
+            setError(e.message || 'Failed to create team.');
         } finally {
             setSubmitting(false);
         }
@@ -136,14 +52,6 @@ export default function CreateTeamScreen({ navigation }) {
 
     if (!fontsLoaded) {
         return null;
-    }
-
-    if (loadingSetup) {
-        return (
-            <View style={styles.centered}>
-                <ActivityIndicator size="large" color="#e94560" />
-            </View>
-        );
     }
 
     return (
@@ -160,116 +68,15 @@ export default function CreateTeamScreen({ navigation }) {
                         <Text style={styles.successTitle}>Team Created</Text>
                         <Text style={styles.successText}>Name: {createdTeam.Name}</Text>
                         <Text style={styles.successText}>Team ID: {createdTeam.TeamId}</Text>
-                        <Text style={styles.successHint}>Now choose a map template and zone to finish creating your character.</Text>
+                        <Text style={styles.successHint}>Create team is complete. Character and map selection happen in the next step.</Text>
+                        <Pressable
+                            style={[styles.actionButton, styles.submitButton, { marginTop: 10, marginLeft: 0 }]}
+                            onPress={() => navigation.navigate('CreateCharacter', { initialTeamId: createdTeam.TeamId })}
+                        >
+                            <Text style={styles.actionText}>Go To Create Character</Text>
+                        </Pressable>
                     </View>
                 )}
-
-                <Text style={styles.label}>Map Template</Text>
-                <View style={styles.templateCard}>
-                    <Pressable
-                        style={styles.dropdownButton}
-                        onPress={() => setIsTemplateDropdownVisible(true)}
-                        disabled={submitting || mapTemplates.length === 0}
-                    >
-                        <Text style={styles.dropdownButtonLabel}>Map Template</Text>
-                        <Text style={styles.dropdownButtonValue} numberOfLines={1}>
-                            {selectedTemplate?.Name || 'Select a template'}
-                        </Text>
-                    </Pressable>
-
-                    <Pressable
-                        style={[
-                            styles.dropdownButton,
-                            !selectedTemplate ? styles.dropdownButtonDisabled : null,
-                        ]}
-                        onPress={() => setIsTemplateZoneDropdownVisible(true)}
-                        disabled={submitting || !selectedTemplate || (selectedTemplate?.ZoneTemplates?.length ?? 0) === 0}
-                    >
-                        <Text style={styles.dropdownButtonLabel}>Zones</Text>
-                        <Text style={styles.dropdownButtonValue} numberOfLines={1}>
-                            {selectedTemplateZone ? `${selectedTemplateZone.ZoneOrder}. ${selectedTemplateZone.Name}` : 'Select a map template first'}
-                        </Text>
-                    </Pressable>
-
-                    <Text style={styles.templateMeta}>
-                        {selectedTemplate ? `${selectedTemplate.ZoneCount} zone(s)` : 'Template data loaded from the server'}
-                    </Text>
-                    {selectedTemplate?.Description ? (
-                        <Text style={styles.templateDescription}>{selectedTemplate.Description}</Text>
-                    ) : null}
-                </View>
-
-                <Modal
-                    visible={isTemplateDropdownVisible}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setIsTemplateDropdownVisible(false)}
-                >
-                    <Pressable style={styles.modalBackdrop} onPress={() => setIsTemplateDropdownVisible(false)}>
-                        <Pressable style={styles.modalCard} onPress={() => { }}>
-                            <Text style={styles.modalTitle}>Choose Map Template</Text>
-                            <ScrollView style={styles.modalList} contentContainerStyle={styles.modalListContent}>
-                                {mapTemplates.map((template) => {
-                                    const selected = template.MapTemplateId === selectedTemplateId;
-                                    return (
-                                        <Pressable
-                                            key={template.MapTemplateId}
-                                            style={[styles.modalItem, selected && styles.modalItemSelected]}
-                                            onPress={() => {
-                                                setSelectedTemplateId(template.MapTemplateId);
-                                                setIsTemplateDropdownVisible(false);
-                                            }}
-                                        >
-                                            <Text style={[styles.modalItemTitle, selected && styles.modalItemTitleSelected]} numberOfLines={1}>
-                                                {template.Name || template.MapTemplateId}
-                                            </Text>
-                                            <Text style={styles.modalItemMeta}>{template.ZoneCount} zones</Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </ScrollView>
-                            <Pressable style={styles.modalCloseButton} onPress={() => setIsTemplateDropdownVisible(false)}>
-                                <Text style={styles.modalCloseText}>Close</Text>
-                            </Pressable>
-                        </Pressable>
-                    </Pressable>
-                </Modal>
-
-                <Modal
-                    visible={isTemplateZoneDropdownVisible}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setIsTemplateZoneDropdownVisible(false)}
-                >
-                    <Pressable style={styles.modalBackdrop} onPress={() => setIsTemplateZoneDropdownVisible(false)}>
-                        <Pressable style={styles.modalCard} onPress={() => { }}>
-                            <Text style={styles.modalTitle}>Choose Zone</Text>
-                            <ScrollView style={styles.modalList} contentContainerStyle={styles.modalListContent}>
-                                {(selectedTemplate?.ZoneTemplates || []).map((zone) => {
-                                    const selected = zone.ZoneTemplateId === selectedTemplateZoneId;
-                                    return (
-                                        <Pressable
-                                            key={zone.ZoneTemplateId}
-                                            style={[styles.modalItem, selected && styles.modalItemSelected]}
-                                            onPress={() => {
-                                                setSelectedTemplateZoneId(zone.ZoneTemplateId);
-                                                setIsTemplateZoneDropdownVisible(false);
-                                            }}
-                                        >
-                                            <Text style={[styles.modalItemTitle, selected && styles.modalItemTitleSelected]} numberOfLines={1}>
-                                                {zone.ZoneOrder}. {zone.Name}
-                                            </Text>
-                                            <Text style={styles.modalItemMeta}>{zone.MaxControlPoints} control points</Text>
-                                        </Pressable>
-                                    );
-                                })}
-                            </ScrollView>
-                            <Pressable style={styles.modalCloseButton} onPress={() => setIsTemplateZoneDropdownVisible(false)}>
-                                <Text style={styles.modalCloseText}>Close</Text>
-                            </Pressable>
-                        </Pressable>
-                    </Pressable>
-                </Modal>
 
                 <Text style={styles.label}>Team Name</Text>
                 <TextInput
@@ -282,17 +89,6 @@ export default function CreateTeamScreen({ navigation }) {
                     editable={!submitting && !createdTeam?.TeamId}
                 />
 
-                <Text style={styles.label}>Character Name (optional)</Text>
-                <TextInput
-                    value={characterName}
-                    onChangeText={setCharacterName}
-                    placeholder="Enter a character name"
-                    placeholderTextColor="#6f7390"
-                    style={styles.input}
-                    maxLength={50}
-                    editable={!submitting}
-                />
-
                 <View style={styles.buttonRow}>
                     <Pressable
                         style={[styles.actionButton, styles.cancelButton]}
@@ -303,13 +99,13 @@ export default function CreateTeamScreen({ navigation }) {
                     </Pressable>
                     <Pressable
                         style={[styles.actionButton, styles.submitButton, submitting && styles.disabledButton]}
-                        onPress={handleCreateTeamAndCharacter}
-                        disabled={submitting}
+                        onPress={handleCreateTeam}
+                        disabled={submitting || !!createdTeam?.TeamId}
                     >
                         {submitting ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                            <Text style={styles.actionText}>{createdTeam?.TeamId ? 'Create Character' : 'Create Team + Character'}</Text>
+                            <Text style={styles.actionText}>{createdTeam?.TeamId ? 'Team Created' : 'Create Team'}</Text>
                         )}
                     </Pressable>
                 </View>
