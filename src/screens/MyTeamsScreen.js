@@ -85,8 +85,8 @@ export default function MyTeamsScreen({ navigation }) {
                         <Pressable style={styles.actionButton} onPress={() => navigation.navigate('TeamInvites')}>
                             <Text style={styles.backButtonText}>Open Team Invites</Text>
                         </Pressable>
-                        <Pressable style={styles.actionButton} onPress={() => navigation.navigate('MapChallenges')}>
-                            <Text style={styles.backButtonText}>Open Map Challenges</Text>
+                        <Pressable style={styles.actionButton} onPress={() => navigation.navigate('ActiveLobbies')}>
+                            <Text style={styles.backButtonText}>Open Map Lobbies</Text>
                         </Pressable>
                         <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
                             <Text style={styles.backButtonText}>Back</Text>

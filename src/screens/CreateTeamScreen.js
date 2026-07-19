@@ -68,12 +68,12 @@ export default function CreateTeamScreen({ navigation }) {
                         <Text style={styles.successTitle}>Team Created</Text>
                         <Text style={styles.successText}>Name: {createdTeam.Name}</Text>
                         <Text style={styles.successText}>Team ID: {createdTeam.TeamId}</Text>
-                        <Text style={styles.successHint}>Create team is complete. Character and map selection happen in the next step.</Text>
+                        <Text style={styles.successHint}>Create team is complete. Continue to map lobbies to set up a match.</Text>
                         <Pressable
                             style={[styles.actionButton, styles.submitButton, { marginTop: 10, marginLeft: 0 }]}
-                            onPress={() => navigation.navigate('CreateCharacter', { initialTeamId: createdTeam.TeamId })}
+                            onPress={() => navigation.navigate('ActiveLobbies', { initialTeamId: createdTeam.TeamId })}
                         >
-                            <Text style={styles.actionText}>Go To Create Character</Text>
+                            <Text style={styles.actionText}>Go To Map Lobbies</Text>
                         </Pressable>
                     </View>
                 )}

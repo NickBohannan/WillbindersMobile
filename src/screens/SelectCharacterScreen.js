@@ -151,8 +151,8 @@ export default function SelectCharacterScreen({ navigation, route }) {
             {!error && characters.length === 0 && (
                 <View style={styles.emptyState}>
                     <Text style={styles.empty}>No characters found for your account.</Text>
-                    <Pressable style={styles.createButton} onPress={() => navigation.navigate('CreateCharacter')}>
-                        <Text style={styles.createButtonText}>Create Character</Text>
+                    <Pressable style={styles.createButton} onPress={() => navigation.navigate('ActiveLobbies')}>
+                        <Text style={styles.createButtonText}>Open Map Lobbies</Text>
                     </Pressable>
                 </View>
             )}

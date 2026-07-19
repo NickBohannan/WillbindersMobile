@@ -151,21 +151,35 @@ export const getPendingJoinRequests = () =>
 export const cancelInvite = (inviteId) =>
     request('POST', `/api/RealmData/CancelInvite/${inviteId}`);
 
-export const createMapChallengeInvite = (mapId, inviterTeamId, inviteeTeamId) =>
-    request('POST', '/api/RealmData/CreateMapChallengeInvite', { mapId, inviterTeamId, inviteeTeamId });
+export const createMapLobby = (mapName, mapTemplateId, creatorTeamId, creatorSpawnZoneTemplateId, isTestMap = true) =>
+    request('POST', '/api/RealmData/CreateMapLobbyAsync', {
+        mapName,
+        mapTemplateId,
+        creatorTeamId,
+        creatorSpawnZoneTemplateId,
+        isTestMap,
+    });
 
-export const getPendingMapChallengeInvites = () =>
-    request('GET', '/api/RealmData/GetPendingMapChallengeInvites');
+export const getMapLobby = (lobbyId) =>
+    request('GET', `/api/RealmData/GetMapLobbyAsync/${lobbyId}`);
 
-export const getAcceptedMapChallenges = () =>
-    request('GET', '/api/RealmData/GetAcceptedMapChallenges');
+export const getActiveMapLobbies = () =>
+    request('GET', '/api/RealmData/GetActiveMapLobbies');
 
-export const respondToMapChallengeInvite = (inviteId, response) =>
-    request('PUT', '/api/RealmData/RespondToMapChallengeInvite', { inviteId, response });
+export const getPendingMapLobbyInvites = () =>
+    request('GET', '/api/RealmData/GetPendingMapLobbyInvites');
 
-// Characters
-export const createCharacter = (characterName, teamId, currentZone, currentMap) =>
-    request('POST', '/api/RealmData/CreateCharacterAsync', { characterName, teamId, currentZone, currentMap });
+export const inviteOpposingLeaderToLobby = (lobbyId, inviteeIdentifier, inviteeTeamId) =>
+    request('POST', '/api/RealmData/InviteOpposingLeaderToLobby', { lobbyId, inviteeIdentifier, inviteeTeamId });
+
+export const inviteLobbyMember = (lobbyId, inviteeIdentifier, teamId) =>
+    request('POST', '/api/RealmData/InviteLobbyMember', { lobbyId, inviteeIdentifier, teamId });
+
+export const respondToMapLobbyInvite = (inviteId, response, spawnZoneId = null) =>
+    request('PUT', '/api/RealmData/RespondToMapLobbyInvite', { inviteId, response, spawnZoneId });
+
+export const startMapFromLobby = (lobbyId) =>
+    request('POST', '/api/RealmData/StartMapFromLobby', { lobbyId });
 
 export const deleteCharacter = (characterId) =>
     request('DELETE', `/api/RealmData/DeleteCharacterAsync/${characterId}`);

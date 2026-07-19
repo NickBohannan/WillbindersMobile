@@ -9,13 +9,14 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import SelectCharacterScreen from './src/screens/SelectCharacterScreen';
-import CreateCharacterScreen from './src/screens/CreateCharacterScreen';
 import CreateTeamScreen from './src/screens/CreateTeamScreen';
 import MyTeamsScreen from './src/screens/MyTeamsScreen';
 import TeamInvitesScreen from './src/screens/TeamInvitesScreen';
 import TeamRequestsScreen from './src/screens/TeamRequestsScreen';
 import CharacterMapScreen from './src/screens/CharacterMapScreen';
 import MapChallengeScreen from './src/screens/MapChallengeScreen';
+import ActiveLobbiesScreen from './src/screens/ActiveLobbiesScreen';
+import MapLobbyScreen from './src/screens/MapLobbyScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,12 +37,13 @@ function RootNavigator() {
                 <Stack.Group>
                     <Stack.Screen name="Home" component={HomeScreen} />
                     <Stack.Screen name="SelectCharacter" component={SelectCharacterScreen} />
-                    <Stack.Screen name="CreateCharacter" component={CreateCharacterScreen} />
                     <Stack.Screen name="CreateTeam" component={CreateTeamScreen} />
                     <Stack.Screen name="MyTeams" component={MyTeamsScreen} />
                     <Stack.Screen name="TeamInvites" component={TeamInvitesScreen} />
                     <Stack.Screen name="TeamRequests" component={TeamRequestsScreen} />
                     <Stack.Screen name="MapChallenges" component={MapChallengeScreen} />
+                    <Stack.Screen name="ActiveLobbies" component={ActiveLobbiesScreen} />
+                    <Stack.Screen name="MapLobby" component={MapLobbyScreen} />
                     <Stack.Screen name="CharacterMap" component={CharacterMapScreen} />
                 </Stack.Group>
             ) : (

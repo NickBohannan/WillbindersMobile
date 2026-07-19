@@ -177,10 +177,10 @@ export default function TeamRequestsScreen({ navigation }) {
                 </Pressable>
                 <Pressable
                     style={[styles.secondaryButton, !selectedTeamId && styles.disabledButton]}
-                    onPress={() => navigation.navigate('CreateCharacter', { initialTeamId: selectedTeamId })}
+                    onPress={() => navigation.navigate('ActiveLobbies', { initialTeamId: selectedTeamId })}
                     disabled={!selectedTeamId}
                 >
-                    <Text style={styles.buttonText}>Create Character For Selected Team</Text>
+                    <Text style={styles.buttonText}>Open Map Lobby For Selected Team</Text>
                 </Pressable>
             </View>
 
