@@ -1,6 +1,15 @@
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = 'http://192.168.1.6:5075';
+function getBaseUrl() {
+    const configuredBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+
+    if (typeof configuredBaseUrl === 'string' && configuredBaseUrl.trim()) {
+        return configuredBaseUrl.trim().replace(/\/$/, '');
+    }
+
+    return 'https://wbdev1.nickbo.io';
+}
+
 let inMemoryToken = null;
 
 export function setAuthToken(token) {
@@ -40,7 +49,7 @@ async function request(method, path, body = null) {
         options.body = JSON.stringify(body);
     }
 
-    const response = await fetch(`${BASE_URL}${path}`, options);
+    const response = await fetch(`${getBaseUrl()}${path}`, options);
     const contentType = (response.headers.get('content-type') || '').toLowerCase();
 
     function tryParseJson(text) {
@@ -211,7 +220,7 @@ export const syncSteps = (events, clientNow, platform, appVersion) =>
 // Realtime
 export async function createMapControlSocket(mapId) {
     const token = await getToken();
-    const wsBase = BASE_URL.replace(/^http/, 'ws');
+    const wsBase = getBaseUrl().replace(/^http/, 'ws');
     const url = `${wsBase}/ws/map-control?mapId=${mapId}${token ? `&access_token=${token}` : ''}`;
     return new WebSocket(url);
 }

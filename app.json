@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "willbinders-mobile",
-    "slug": "willbinders-mobile",
+    "slug": "willbinders",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -55,6 +55,12 @@
           "healthSharePermission": "Willbinders reads your step history to sync character power."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "01f08226-93ea-4bb8-bac4-790ab89fcc9e"
+      }
+    },
+    "owner": "orolo-software"
   }
 }

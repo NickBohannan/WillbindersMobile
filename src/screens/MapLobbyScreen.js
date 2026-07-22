@@ -33,7 +33,7 @@ export default function MapLobbyScreen({ navigation, route }) {
     const [opposingTeamId, setOpposingTeamId] = useState(null);
     const [memberIdentifier, setMemberIdentifier] = useState('');
     const [memberTeamId, setMemberTeamId] = useState(null);
-    const [selectedAcceptSpawnZoneId, setSelectedAcceptSpawnZoneId] = useState(null);
+    const [selectedAcceptSpawnZoneByInvite, setSelectedAcceptSpawnZoneByInvite] = useState({});
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -49,6 +49,14 @@ export default function MapLobbyScreen({ navigation, route }) {
         () => (Array.isArray(activeLobbyMap?.Zones) ? activeLobbyMap.Zones : []),
         [activeLobbyMap]
     );
+
+    function getZoneId(zone) {
+        return zone?.ZoneId ?? zone?.Id ?? null;
+    }
+
+    function getZoneName(zone) {
+        return zone?.Name ?? zone?.ZoneName ?? 'Zone';
+    }
 
     const loadLobby = useCallback(async (id) => {
         if (!id) {
@@ -166,11 +174,12 @@ export default function MapLobbyScreen({ navigation, route }) {
 
         try {
             if (response === 'accepted') {
-                if (!selectedAcceptSpawnZoneId) {
+                const selectedSpawnZoneId = selectedAcceptSpawnZoneByInvite[inviteId] ?? null;
+                if (!selectedSpawnZoneId) {
                     throw new Error('Select a spawn zone before accepting.');
                 }
 
-                await api.respondToMapLobbyInvite(inviteId, 'accepted', selectedAcceptSpawnZoneId);
+                await api.respondToMapLobbyInvite(inviteId, 'accepted', selectedSpawnZoneId);
                 setSuccess('Invite accepted.');
             } else {
                 await api.respondToMapLobbyInvite(inviteId, 'rejected');
@@ -344,13 +353,23 @@ export default function MapLobbyScreen({ navigation, route }) {
                                     <FlatList
                                         horizontal
                                         data={activeMapZoneOptions}
-                                        keyExtractor={(zone) => zone.Id}
+                                        keyExtractor={(zone) => String(getZoneId(zone))}
                                         style={styles.horizontalList}
                                         renderItem={({ item: zone }) => (
                                             <ChoicePill
-                                                label={zone.Name}
-                                                selected={selectedAcceptSpawnZoneId === zone.Id}
-                                                onPress={() => setSelectedAcceptSpawnZoneId(zone.Id)}
+                                                label={getZoneName(zone)}
+                                                selected={selectedAcceptSpawnZoneByInvite[invite.InviteId] === getZoneId(zone)}
+                                                onPress={() => {
+                                                    const zoneId = getZoneId(zone);
+                                                    if (!zoneId) {
+                                                        return;
+                                                    }
+
+                                                    setSelectedAcceptSpawnZoneByInvite((previous) => ({
+                                                        ...previous,
+                                                        [invite.InviteId]: zoneId,
+                                                    }));
+                                                }}
                                             />
                                         )}
                                     />
